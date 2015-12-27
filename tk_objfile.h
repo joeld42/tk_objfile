@@ -32,7 +32,7 @@ typedef struct {
 } TK_Triangle;
 
 typedef struct {
-    size_t posIndx;
+    size_t posIndex;
     size_t stIndex;
     size_t normIndex;
 } TK_IndexedVert;
@@ -54,19 +54,23 @@ typedef struct {
 // it however you wish, and then call the parser again to do the actual parsing.
 typedef struct
 {
-    void (*error)( size_t lineNumber, const char *message );
+    void (*error)( size_t lineNumber, const char *message, void *userData );
 
     // "Triangle Soup" API -- calls triangles one at a time, grouped by material
-    void (*material)( const char *mtlName);
-    void (*triangle)( TK_TriangleVert a, TK_TriangleVert b, TK_TriangleVert c );
+    void (*material)( const char *mtlName, void *userData );
+    void (*triangle)( TK_TriangleVert a, TK_TriangleVert b, TK_TriangleVert c, void *userData );
     
     // "Indexed" API -- batches of triangles, preserving the indexing of the obj file. Still
     // probably better to run it through a tri-stripper or something.
-    void (*triangleGroup)( const char *mtlname, size_t numTriangles, TK_IndexedTriangle *triangles );
+    void (*triangleGroup)( const char *mtlname, size_t numTriangles,
+                           TK_IndexedTriangle *triangles, void *userData );
     
     // Scratch memory needed by parser.
     void *scratchMem;
     size_t scratchMemSize;
+    
+    // arbitrary user data passed through to callbacks
+    void *userData;
     
     // bookkeeping during parsing
     size_t currentLineNumber;
@@ -306,7 +310,8 @@ int TKimpl_compareMtlName( char *mtlA, char *mtlB )
 void TKimpl_memoryError( TK_ObjDelegate *objDelegate )
 {
     if (objDelegate->error) {
-        objDelegate->error( objDelegate->currentLineNumber, "Not enough scratch memory.");
+        objDelegate->error( objDelegate->currentLineNumber, "Not enough scratch memory.",
+                           objDelegate->userData );
     }
 }
 
@@ -318,7 +323,8 @@ bool TKImpl_parseFloat( TK_ObjDelegate *objDelegate, char *token, char *endtoken
     {
         // Token or endtoken is NULL
         if (objDelegate->error) {
-            objDelegate->error( objDelegate->currentLineNumber, "Expected float." );
+            objDelegate->error( objDelegate->currentLineNumber, "Expected float.",
+                               objDelegate->userData );
         }
         return 0;
     }
@@ -349,7 +355,8 @@ bool TKImpl_parseFloat( TK_ObjDelegate *objDelegate, char *token, char *endtoken
                     char errBuff[35];
                     TKimpl_copyString( errBuff, "Unexpected character '_' in float." );
                     errBuff[22] = *ch;
-                    objDelegate->error( objDelegate->currentLineNumber, errBuff );
+                    objDelegate->error( objDelegate->currentLineNumber, errBuff,
+                                       objDelegate->userData );
                 }
                 return 0;
             }
@@ -531,7 +538,7 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                             if (parseType==TKimpl_ParseTypeFull)
                             {
                                 TKimpl_parseFaceIndices(token, endtoken,
-                                                        &(vert.posIndx),
+                                                        &(vert.posIndex),
                                                         &(vert.stIndex),
                                                         &(vert.normIndex) );
                                 if (count==0) {
@@ -571,17 +578,32 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
 
 void TKimpl_GetIndexedTriangle( TK_Triangle *tri, TKImpl_ParseInfo *info, TK_IndexedTriangle ndxTri )
 {
-    tri->vertA.pos[0] = info->vertPos[ndxTri.vertA.posIndx*3 + 0];
-    tri->vertA.pos[1] = info->vertPos[ndxTri.vertA.posIndx*3 + 1];
-    tri->vertA.pos[2] = info->vertPos[ndxTri.vertA.posIndx*3 + 2];
+    tri->vertA.pos[0] = info->vertPos[ndxTri.vertA.posIndex*3 + 0];
+    tri->vertA.pos[1] = info->vertPos[ndxTri.vertA.posIndex*3 + 1];
+    tri->vertA.pos[2] = info->vertPos[ndxTri.vertA.posIndex*3 + 2];
+    tri->vertA.nrm[0] = info->vertNrm[ndxTri.vertA.normIndex*3 + 0];
+    tri->vertA.nrm[1] = info->vertNrm[ndxTri.vertA.normIndex*3 + 1];
+    tri->vertA.nrm[2] = info->vertNrm[ndxTri.vertA.normIndex*3 + 2];
+    tri->vertA.st[0] = info->vertSt[ndxTri.vertA.stIndex*3 + 0];
+    tri->vertA.st[1] = info->vertSt[ndxTri.vertA.stIndex*3 + 1];
 
-    tri->vertB.pos[0] = info->vertPos[ndxTri.vertB.posIndx*3 + 0];
-    tri->vertB.pos[1] = info->vertPos[ndxTri.vertB.posIndx*3 + 1];
-    tri->vertB.pos[2] = info->vertPos[ndxTri.vertB.posIndx*3 + 2];
+    tri->vertB.pos[0] = info->vertPos[ndxTri.vertB.posIndex*3 + 0];
+    tri->vertB.pos[1] = info->vertPos[ndxTri.vertB.posIndex*3 + 1];
+    tri->vertB.pos[2] = info->vertPos[ndxTri.vertB.posIndex*3 + 2];
+    tri->vertB.nrm[0] = info->vertNrm[ndxTri.vertB.normIndex*3 + 0];
+    tri->vertB.nrm[1] = info->vertNrm[ndxTri.vertB.normIndex*3 + 1];
+    tri->vertB.nrm[2] = info->vertNrm[ndxTri.vertB.normIndex*3 + 2];
+    tri->vertB.st[0] = info->vertSt[ndxTri.vertB.stIndex*3 + 0];
+    tri->vertB.st[1] = info->vertSt[ndxTri.vertB.stIndex*3 + 1];
 
-    tri->vertC.pos[0] = info->vertPos[ndxTri.vertC.posIndx*3 + 0];
-    tri->vertC.pos[1] = info->vertPos[ndxTri.vertC.posIndx*3 + 1];
-    tri->vertC.pos[2] = info->vertPos[ndxTri.vertC.posIndx*3 + 2];
+    tri->vertC.pos[0] = info->vertPos[ndxTri.vertC.posIndex*3 + 0];
+    tri->vertC.pos[1] = info->vertPos[ndxTri.vertC.posIndex*3 + 1];
+    tri->vertC.pos[2] = info->vertPos[ndxTri.vertC.posIndex*3 + 2];
+    tri->vertC.nrm[0] = info->vertNrm[ndxTri.vertC.normIndex*3 + 0];
+    tri->vertC.nrm[1] = info->vertNrm[ndxTri.vertC.normIndex*3 + 1];
+    tri->vertC.nrm[2] = info->vertNrm[ndxTri.vertC.normIndex*3 + 2];
+    tri->vertC.st[0] = info->vertSt[ndxTri.vertC.stIndex*3 + 0];
+    tri->vertC.st[1] = info->vertSt[ndxTri.vertC.stIndex*3 + 1];
 
 }
 
@@ -682,7 +704,7 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDele
                                               TKIMPL_MAX_MATERIAL_NAME );
                     
                     // emit the material name
-                    objDelegate->material( mtlName );
+                    objDelegate->material( mtlName, objDelegate->userData );
                 }
                 // Now emit all the triangles for the material
                 if (objDelegate->triangle)
@@ -691,7 +713,7 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDele
                         TK_Triangle tri;
 
                         TKimpl_GetIndexedTriangle( &tri, info, info->materials[mi].triangles[ti] );
-                        objDelegate->triangle( tri.vertA, tri.vertB, tri.vertC );
+                        objDelegate->triangle( tri.vertA, tri.vertB, tri.vertC, objDelegate->userData );
                     }
                 }
             }
@@ -708,7 +730,7 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDele
                                           TKIMPL_MAX_MATERIAL_NAME );
 
                 objDelegate->triangleGroup( mtlName, info->materials[mi].numTriangles,
-                                           info->materials[mi].triangles );
+                                           info->materials[mi].triangles, objDelegate->userData );
             }
         }
     }

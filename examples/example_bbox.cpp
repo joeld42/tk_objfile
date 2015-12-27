@@ -1,21 +1,47 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <float.h>
 
 #define TK_OBJFILE_IMPLEMENTATION
 #include "tk_objfile.h"
 
-void testErrorMessage( size_t lineNum, const char *message )
+// Note: while tk_objfile doesn't use any cstdlib functions itself, we use them in the example
+// code to implement file loading, printing and allocation.
+
+// Compute the bounding box for an obj, to show how to use the simple "triangle soup" API.
+//
+// Note that this would be more efficent to use the triangle group API instead of the
+// "triangle soup" api, but this is for illustration purposes, and also this may be more
+// correct if there are extra verts in the OBJ file that are
+struct BoundingBox {
+    float minPos[3];
+    float maxPos[3];
+};
+
+inline float minFloat( float a, float b)
+{
+    if (a < b) return a;
+    else return b;
+}
+
+inline float maxFloat( float a, float b)
+{
+    if (a >= b) return a;
+    else return b;
+}
+
+void bboxErrorMessage( size_t lineNum, const char *message, void *userData )
 {
     printf("ERROR on line %zu: %s\n", lineNum, message );
 }
 
-void testSwitchMaterial( const char *materialName )
+void bboxSwitchMaterial( const char *materialName, void *userData )
 {
     printf(">>> Current material: %s\n", materialName );
 }
 
-void printVert( const char *msg, TK_TriangleVert v )
+void printVert( const char *msg, TK_TriangleVert v, void *userData )
 {
     printf("%10s : pos (%3.2f, %3.2f, %3.2f) nrm (%3.2f, %3.2f, %3.2f) uv (%3.2f, %3.2f )\n",
            msg,
@@ -25,18 +51,20 @@ void printVert( const char *msg, TK_TriangleVert v )
            
 }
 
-void testProcessTriangle( TK_TriangleVert a, TK_TriangleVert b, TK_TriangleVert c )
+void bboxProcessTriangle( TK_TriangleVert a, TK_TriangleVert b, TK_TriangleVert c, void *userData )
 {
-    static int triangleCount = 0;
-    printf("--- Tri %d -- \n", triangleCount++ );
-    
-    printVert( "A", a );
-    printVert( "B", b );
-    printVert( "C", c );
+    BoundingBox *bbox = (BoundingBox*)userData;
+    for (int i=0; i < 3; i++) {
+        bbox->minPos[i] = minFloat( a.pos[i], bbox->minPos[i] );
+        bbox->maxPos[i] = maxFloat( a.pos[i], bbox->maxPos[i] );
+    }
 }
 
 
-void testTriangleGroup( const char *mtlname, size_t numTriangles, TK_IndexedTriangle *triangles )
+// BBox example doesn't use the Triangle Group api, but just including it for example
+void bboxTriangleGroup( const char *mtlname,
+                        size_t numTriangles, TK_IndexedTriangle *triangles,
+                        void *userData )
 {
     printf("Triangles for material %s (%zu triangles)\n", mtlname, numTriangles );
     
@@ -77,19 +105,18 @@ void *readEntireFile( const char *filename, size_t *out_filesz )
 
 int main(int argc, const char * argv[])
 {
-    // test process triangle
-//    TK_TriangleVert testA = {}, testB = {}, testC = {};
-//    testSwitchMaterial( "fakeMaterial");
-//    testProcessTriangle( testA, testB, testC );
-    
+    // The bounding box that we will fill in
+    BoundingBox bbox = { { FLT_MAX, FLT_MAX, FLT_MAX },
+                         { FLT_MIN, FLT_MIN, FLT_MIN } };
+
     // Lower level, "callback" based API
     TK_ObjDelegate objDelegate = {};
-    objDelegate.error = testErrorMessage;
+    objDelegate.userData = (void*)&bbox;
+    objDelegate.error = bboxErrorMessage;
 
-    
     // Read the obj file
     if (argc < 2) {
-        testErrorMessage(0, "No obj file specified.");
+        bboxErrorMessage(0, "No obj file specified.", NULL );
         return 1;
     }
     size_t objFileSize = 0;
@@ -98,17 +125,14 @@ int main(int argc, const char * argv[])
         printf("Could not open OBJ file '%s'\n", argv[1] );
     }
     
-    printf("FILE SIZE %zu\n", objFileSize );
-    printf("FILE DATA:----\n%s\n-----\n", (const char*)objFileData);
-    
     // Prepass to determine memory reqs
     TK_ParseObj( objFileData, objFileSize, &objDelegate );
     printf("Scratch Mem: %zu\n", objDelegate.scratchMemSize );
     objDelegate.scratchMem = malloc( objDelegate.scratchMemSize );
     
     // Parse again with memory
-    objDelegate.material = testSwitchMaterial;
-    objDelegate.triangle = testProcessTriangle;
+    objDelegate.material = bboxSwitchMaterial;
+    objDelegate.triangle = bboxProcessTriangle;
     
     TK_ParseObj( objFileData, objFileSize, &objDelegate );
     
@@ -116,7 +140,10 @@ int main(int argc, const char * argv[])
     printf("Num Norms %zu\n", objDelegate.numNorms );
     printf("Num STs %zu\n", objDelegate.numSts );
     
-    
+    printf("Bounding Box: min [%3.2f %3.2f %3.2f] max [%3.2f %3.2f %3.2f]\n",
+           bbox.minPos[0], bbox.minPos[1], bbox.minPos[2],
+           bbox.maxPos[0], bbox.maxPos[1], bbox.maxPos[2] );
+
     
     return 0;
 }
