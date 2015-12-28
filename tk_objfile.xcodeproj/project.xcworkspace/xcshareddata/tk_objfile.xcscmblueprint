@@ -1,0 +1,30 @@
+{
+  "DVTSourceControlWorkspaceBlueprintPrimaryRemoteRepositoryKey" : "D327893DEF5C2024B4914EDEB7D2DB07DB589146",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyRepositoryLocationsKey" : {
+
+  },
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyStatesKey" : {
+    "D327893DEF5C2024B4914EDEB7D2DB07DB589146" : 0,
+    "0C95EEA8FF0C0E695973CB8EA4E7E70E385D606F" : 0
+  },
+  "DVTSourceControlWorkspaceBlueprintIdentifierKey" : "870BE4CE-CBEC-4F32-91A1-5250D2406CAF",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyPathsKey" : {
+    "D327893DEF5C2024B4914EDEB7D2DB07DB589146" : "tk_objfile\/",
+    "0C95EEA8FF0C0E695973CB8EA4E7E70E385D606F" : "..\/Toolkits\/imgui"
+  },
+  "DVTSourceControlWorkspaceBlueprintNameKey" : "tk_objfile",
+  "DVTSourceControlWorkspaceBlueprintVersion" : 204,
+  "DVTSourceControlWorkspaceBlueprintRelativePathToProjectKey" : "tk_objfile.xcodeproj",
+  "DVTSourceControlWorkspaceBlueprintRemoteRepositoriesKey" : [
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/ocornut\/imgui.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "0C95EEA8FF0C0E695973CB8EA4E7E70E385D606F"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "github.com:joeld42\/tk_objfile.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "D327893DEF5C2024B4914EDEB7D2DB07DB589146"
+    }
+  ]
+}

@@ -19,3 +19,17 @@ improvements:
 future features:
 - Recalculate normals if missing, or if requested
 - Support tangents, calculate reasonable tangents
+
+Usage:
+---
+TODO
+
+Examples:
+---
+
+example_bbox.cpp - Prints the bounding box for an obj file. Demonstrates the
+"Triangle Soup" style API.
+
+objviewer - Object viewer using IMGUI/glfw. Demonstrates the triangle group APIs.
+I haven't really set up the objviewer to build easiy, so there are some hardcoded
+paths, etc.

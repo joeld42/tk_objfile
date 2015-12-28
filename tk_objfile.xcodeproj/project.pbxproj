@@ -7,10 +7,29 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		6D07F8621C308D47009A77ED /* imgui_impl_glfw_gl3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6D07F85F1C308D47009A77ED /* imgui_impl_glfw_gl3.cpp */; };
+		6D07F8631C308D47009A77ED /* objviewer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6D07F8611C308D47009A77ED /* objviewer.cpp */; };
+		6D07F8691C3194E0009A77ED /* imgui_demo.o in Frameworks */ = {isa = PBXBuildFile; fileRef = 6D07F8661C3194E0009A77ED /* imgui_demo.o */; };
+		6D07F86A1C3194E0009A77ED /* imgui_draw.o in Frameworks */ = {isa = PBXBuildFile; fileRef = 6D07F8671C3194E0009A77ED /* imgui_draw.o */; };
+		6D07F86B1C3194E0009A77ED /* imgui.o in Frameworks */ = {isa = PBXBuildFile; fileRef = 6D07F8681C3194E0009A77ED /* imgui.o */; };
+		6D07F86D1C31951A009A77ED /* gl3w.o in Frameworks */ = {isa = PBXBuildFile; fileRef = 6D07F86C1C31951A009A77ED /* gl3w.o */; };
+		6D07F86F1C319566009A77ED /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6D07F86E1C319566009A77ED /* OpenGL.framework */; };
+		6D07F8711C31956B009A77ED /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6D07F8701C31956B009A77ED /* Cocoa.framework */; };
+		6D07F8731C319571009A77ED /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6D07F8721C319571009A77ED /* IOKit.framework */; };
+		6D07F8751C31957B009A77ED /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6D07F8741C31957B009A77ED /* CoreVideo.framework */; };
 		6DA9E69A1C3071FC0001358A /* example_bbox.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6DA9E68C1C3071B20001358A /* example_bbox.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		6D07F8541C308BE5009A77ED /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
 		6DA9E6801C30712A0001358A /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -32,6 +51,18 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		6D07F8561C308BE5009A77ED /* objviewer */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = objviewer; sourceTree = BUILT_PRODUCTS_DIR; };
+		6D07F85F1C308D47009A77ED /* imgui_impl_glfw_gl3.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = imgui_impl_glfw_gl3.cpp; sourceTree = "<group>"; };
+		6D07F8601C308D47009A77ED /* imgui_impl_glfw_gl3.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = imgui_impl_glfw_gl3.h; sourceTree = "<group>"; };
+		6D07F8611C308D47009A77ED /* objviewer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = objviewer.cpp; sourceTree = "<group>"; };
+		6D07F8661C3194E0009A77ED /* imgui_demo.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; name = imgui_demo.o; path = ../../../Toolkits/imgui/imgui_demo.o; sourceTree = "<group>"; };
+		6D07F8671C3194E0009A77ED /* imgui_draw.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; name = imgui_draw.o; path = ../../../Toolkits/imgui/imgui_draw.o; sourceTree = "<group>"; };
+		6D07F8681C3194E0009A77ED /* imgui.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; name = imgui.o; path = ../../../Toolkits/imgui/imgui.o; sourceTree = "<group>"; };
+		6D07F86C1C31951A009A77ED /* gl3w.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; name = gl3w.o; path = ../../../Toolkits/imgui/examples/libs/gl3w/GL/gl3w.o; sourceTree = "<group>"; };
+		6D07F86E1C319566009A77ED /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
+		6D07F8701C31956B009A77ED /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
+		6D07F8721C319571009A77ED /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
+		6D07F8741C31957B009A77ED /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = System/Library/Frameworks/CoreVideo.framework; sourceTree = SDKROOT; };
 		6DA9E6821C30712A0001358A /* tk_objfile */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = tk_objfile; sourceTree = BUILT_PRODUCTS_DIR; };
 		6DA9E68C1C3071B20001358A /* example_bbox.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = example_bbox.cpp; path = examples/example_bbox.cpp; sourceTree = SOURCE_ROOT; };
 		6DA9E68E1C3071BE0001358A /* tk_objfile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = tk_objfile.h; sourceTree = "<group>"; };
@@ -39,6 +70,21 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		6D07F8531C308BE5009A77ED /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6D07F8751C31957B009A77ED /* CoreVideo.framework in Frameworks */,
+				6D07F8731C319571009A77ED /* IOKit.framework in Frameworks */,
+				6D07F8711C31956B009A77ED /* Cocoa.framework in Frameworks */,
+				6D07F86F1C319566009A77ED /* OpenGL.framework in Frameworks */,
+				6D07F86D1C31951A009A77ED /* gl3w.o in Frameworks */,
+				6D07F86B1C3194E0009A77ED /* imgui.o in Frameworks */,
+				6D07F8691C3194E0009A77ED /* imgui_demo.o in Frameworks */,
+				6D07F86A1C3194E0009A77ED /* imgui_draw.o in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		6DA9E67F1C30712A0001358A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -56,11 +102,46 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		6D07F8571C308BE5009A77ED /* objviewer */ = {
+			isa = PBXGroup;
+			children = (
+				6D07F8761C31A447009A77ED /* frameworks */,
+				6D07F8651C319145009A77ED /* imgui */,
+				6D07F85F1C308D47009A77ED /* imgui_impl_glfw_gl3.cpp */,
+				6D07F8601C308D47009A77ED /* imgui_impl_glfw_gl3.h */,
+				6D07F8611C308D47009A77ED /* objviewer.cpp */,
+			);
+			path = objviewer;
+			sourceTree = "<group>";
+		};
+		6D07F8651C319145009A77ED /* imgui */ = {
+			isa = PBXGroup;
+			children = (
+				6D07F86C1C31951A009A77ED /* gl3w.o */,
+				6D07F8661C3194E0009A77ED /* imgui_demo.o */,
+				6D07F8671C3194E0009A77ED /* imgui_draw.o */,
+				6D07F8681C3194E0009A77ED /* imgui.o */,
+			);
+			name = imgui;
+			sourceTree = "<group>";
+		};
+		6D07F8761C31A447009A77ED /* frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				6D07F8741C31957B009A77ED /* CoreVideo.framework */,
+				6D07F8721C319571009A77ED /* IOKit.framework */,
+				6D07F8701C31956B009A77ED /* Cocoa.framework */,
+				6D07F86E1C319566009A77ED /* OpenGL.framework */,
+			);
+			name = frameworks;
+			sourceTree = "<group>";
+		};
 		6DA9E6791C30712A0001358A = {
 			isa = PBXGroup;
 			children = (
 				6DA9E68E1C3071BE0001358A /* tk_objfile.h */,
 				6DA9E6841C30712A0001358A /* examples */,
+				6D07F8571C308BE5009A77ED /* objviewer */,
 				6DA9E6831C30712A0001358A /* Products */,
 			);
 			sourceTree = "<group>";
@@ -70,6 +151,7 @@
 			children = (
 				6DA9E6821C30712A0001358A /* tk_objfile */,
 				6DA9E6931C3071EC0001358A /* example_bbox */,
+				6D07F8561C308BE5009A77ED /* objviewer */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -86,6 +168,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		6D07F8551C308BE5009A77ED /* objviewer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6D07F85C1C308BE5009A77ED /* Build configuration list for PBXNativeTarget "objviewer" */;
+			buildPhases = (
+				6D07F8521C308BE5009A77ED /* Sources */,
+				6D07F8531C308BE5009A77ED /* Frameworks */,
+				6D07F8541C308BE5009A77ED /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = objviewer;
+			productName = objviewer;
+			productReference = 6D07F8561C308BE5009A77ED /* objviewer */;
+			productType = "com.apple.product-type.tool";
+		};
 		6DA9E6811C30712A0001358A /* tk_objfile */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 6DA9E6891C30712A0001358A /* Build configuration list for PBXNativeTarget "tk_objfile" */;
@@ -129,6 +228,9 @@
 				LastUpgradeCheck = 0720;
 				ORGANIZATIONNAME = "Joel Davis";
 				TargetAttributes = {
+					6D07F8551C308BE5009A77ED = {
+						CreatedOnToolsVersion = 7.2;
+					};
 					6DA9E6811C30712A0001358A = {
 						CreatedOnToolsVersion = 7.2;
 					};
@@ -151,11 +253,21 @@
 			targets = (
 				6DA9E6811C30712A0001358A /* tk_objfile */,
 				6DA9E6921C3071EC0001358A /* example_bbox */,
+				6D07F8551C308BE5009A77ED /* objviewer */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
+		6D07F8521C308BE5009A77ED /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6D07F8621C308D47009A77ED /* imgui_impl_glfw_gl3.cpp in Sources */,
+				6D07F8631C308D47009A77ED /* objviewer.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		6DA9E67E1C30712A0001358A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -174,6 +286,36 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
+		6D07F85A1C308BE5009A77ED /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				FRAMEWORK_SEARCH_PATHS = "";
+				HEADER_SEARCH_PATHS = (
+					"${HOME}/Toolkits/imgui",
+					"${HOME}/Toolkits/imgui/examples/libs/gl3w/",
+					"${HOME}/Toolkits/imgui/examples/libs/glfw/include",
+				);
+				LIBRARY_SEARCH_PATHS = /usr/local/lib;
+				OTHER_LDFLAGS = "-lglfw3";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		6D07F85B1C308BE5009A77ED /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				FRAMEWORK_SEARCH_PATHS = "";
+				HEADER_SEARCH_PATHS = (
+					"${HOME}/Toolkits/imgui",
+					"${HOME}/Toolkits/imgui/examples/libs/gl3w/",
+					"${HOME}/Toolkits/imgui/examples/libs/glfw/include",
+				);
+				LIBRARY_SEARCH_PATHS = /usr/local/lib;
+				OTHER_LDFLAGS = "-lglfw3";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 		6DA9E6871C30712A0001358A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -284,6 +426,14 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		6D07F85C1C308BE5009A77ED /* Build configuration list for PBXNativeTarget "objviewer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6D07F85A1C308BE5009A77ED /* Debug */,
+				6D07F85B1C308BE5009A77ED /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+		};
 		6DA9E67D1C30712A0001358A /* Build configuration list for PBXProject "tk_objfile" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -300,6 +450,7 @@
 				6DA9E68B1C30712A0001358A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		6DA9E6971C3071EC0001358A /* Build configuration list for PBXNativeTarget "example_bbox" */ = {
 			isa = XCConfigurationList;
@@ -308,6 +459,7 @@
 				6DA9E6991C3071EC0001358A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
