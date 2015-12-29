@@ -270,7 +270,8 @@ void TKimpl_parseFaceIndices( char *token, char *endtoken,
     for (int i=0; i < numSlash+1; i++) {
         number[i] = TKimpl_parseIndex( numberDelim[i], numberDelim[i+1]-1 );
         if (number[i]>0) number[i]--; // OBJ file indices are 1-based
-        printf("numToken %d: %s = %ld\n", i, TKimpl_printToken(numberDelim[i], numberDelim[i+1]-1), number[i]);
+        printf("numToken %d: %s = %ld\n", i,
+               TKimpl_printToken(numberDelim[i], numberDelim[i+1]-1), number[i]);
     }
     
     // decide which lists indexes represent based on number of slashes
@@ -556,14 +557,23 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                                                         &(vert.normIndex) );
                                 if (count==0) {
                                     tri.vertA = vert;
+//                                    printf("assigning vert A %d %d %d\n",
+//                                          tri.vertA.posIndex, tri.vertA.stIndex, tri.vertA.normIndex );
                                 } else if (count==1) {
                                     tri.vertB = vert;
-                                } else if (count > 2) {
+//                                    printf("assigning vert B %d %d %d\n",
+//                                          tri.vertB.posIndex, tri.vertB.stIndex, tri.vertB.normIndex );
+                                } else if (count > 3) {
                                     tri.vertB = tri.vertC;
+//                                    printf("rotating vert C->B\n");
+                                    
                                 }
                                 
                                 if (count > 2) {
                                     tri.vertC = vert;
+//                                    printf("assigning vert C %d %d %d\n",
+//                                          tri.vertC.posIndex, tri.vertC.stIndex, tri.vertC.normIndex );
+
                                     printf("adding triangle %zu\n", currMtl->numTriangles );
                                     currMtl->triangles[ currMtl->numTriangles++ ] = tri;
                                 }
@@ -621,6 +631,13 @@ void TKimpl_GetIndexedTriangle( TK_Triangle *tri, TK_Geometry *geom, TK_IndexedT
     tri->vertC.st[0] = geom->vertSt[ndxTri.vertC.stIndex*3 + 0];
     tri->vertC.st[1] = geom->vertSt[ndxTri.vertC.stIndex*3 + 1];
 
+//    // DBG
+//    for (int i=0; i < 3; i++)
+//    {
+//        tri->vertA.pos[i] = -0.5;
+//        tri->vertB.pos[i] = -0.5;
+//        tri->vertC.pos[i] = -0.5;
+//    }
 }
 
 void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDelegate )
@@ -710,9 +727,7 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDele
                         geom->materials, &(geom->numMaterials),
                         objDelegate, TKimpl_ParseTypeFull );
     
-    // Now go through the results
-    
-    // First, call through the "triangle soup" api if requested
+    // Now go through the results with the "triangle soup" API
     if ((objDelegate->triangle) || (objDelegate->material)) {
         for (int mi=0; mi < geom->numMaterials; mi++) {
             if (geom->materials[mi].numTriangles > 0) {
@@ -729,7 +744,7 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDele
                 if (objDelegate->triangle)
                 {
                     for (size_t ti=0; ti < geom->materials[mi].numTriangles; ti++) {
-                        TK_Triangle tri;
+                        TK_Triangle tri = {};
 
                         TKimpl_GetIndexedTriangle( &tri, geom, geom->materials[mi].triangles[ti] );
                         objDelegate->triangle( tri.vertA, tri.vertB, tri.vertC, objDelegate->userData );
@@ -739,6 +754,7 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDele
         }
     }
     
+#if 0
     // Call through the geometry api
     if (objDelegate->geometry) {
         objDelegate->geometry( geom, objDelegate->userData );
@@ -758,7 +774,7 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDele
             }
         }
     }
-
+#endif
 
     
 }

@@ -1,5 +1,6 @@
 
 #include <string.h>
+#include <math.h>
 
 #include <imgui.h>
 
@@ -12,12 +13,190 @@
 #define TK_OBJFILE_IMPLEMENTATION
 #include "tk_objfile.h"
 
+#define offset_d(i,f)    (long(&(i)->f) - long(i))
+#define offset_s(t,f)    offset_d((t*)1000, f)
+
+enum
+{
+    VertexAttrib_POSITION,
+    VertexAttrib_TEXCOORD,
+    VertexAttrib_NORMAL,
+//    VertexAttrib_TANGENT,
+//    VertexAttrib_BITANGENT,
+//    VertexAttrib_COLOR,
+    VertexAttrib_COUNT
+};
+
+#define deg_to_rad(x) (x * (M_PI/180.0f))
+
+void glCheckError(const char* file, unsigned int line )
+{
+    // Get the last error
+    GLenum errorCode = glGetError();
+    
+    if (errorCode != GL_NO_ERROR)
+    {
+        const char *error = "Unknown error";
+        const char *description  = "No description";
+        
+        // Decode the error code
+        switch (errorCode)
+        {
+            case GL_INVALID_ENUM:
+            {
+                error = "GL_INVALID_ENUM";
+                description = "An unacceptable value has been specified for an enumerated argument.";
+                break;
+            }
+                
+            case GL_INVALID_VALUE:
+            {
+                error = "GL_INVALID_VALUE";
+                description = "A numeric argument is out of range.";
+                break;
+            }
+                
+            case GL_INVALID_OPERATION:
+            {
+                error = "GL_INVALID_OPERATION";
+                description = "The specified operation is not allowed in the current state.";
+                break;
+            }
+                
+            case GL_STACK_OVERFLOW:
+            {
+                error = "GL_STACK_OVERFLOW";
+                description = "This command would cause a stack overflow.";
+                break;
+            }
+                
+            case GL_STACK_UNDERFLOW:
+            {
+                error = "GL_STACK_UNDERFLOW";
+                description = "This command would cause a stack underflow.";
+                break;
+            }
+                
+            case GL_OUT_OF_MEMORY:
+            {
+                error = "GL_OUT_OF_MEMORY";
+                description = "There is not enough memory left to execute the command.";
+                break;
+            }
+                
+            case GL_INVALID_FRAMEBUFFER_OPERATION:
+            {
+                error = "GL_INVALID_FRAMEBUFFER_OPERATION";
+                description = "The object bound to FRAMEBUFFER_BINDING is not \"framebuffer complete\".";
+                break;
+            }
+        }
+        
+        // Log the error
+        printf(" GL ERROR %s:%d -- %s (%s)\n", file, line, error, description );
+        printf("...\n");
+    }
+}
+
+#define CHECKGL glCheckError( __FILE__, __LINE__)
+
+void matrixFrustumf2(float *mat, GLfloat left, GLfloat right, GLfloat bottom,
+                  GLfloat top, GLfloat znear, GLfloat zfar)
+{
+    float temp, temp2, temp3, temp4;
+    temp = 2.0f * znear;
+    temp2 = right - left;
+    temp3 = top - bottom;
+    temp4 = zfar - znear;
+    mat[0] = temp / temp2;
+    mat[1] = 0.0f;
+    mat[2] = 0.0f;
+    mat[3] = 0.0f;
+    
+    mat[4] = 0.0f;
+    mat[5] = temp / temp3;
+    mat[6] = 0.0f;
+    mat[7] = 0.0f;
+    
+    mat[8] = (right + left) / temp2;
+    mat[9] = (top + bottom) / temp3;
+    mat[10] = ((-zfar - znear) / temp4);
+    mat[11] = -1.0f;
+    
+    mat[12] = 0.0f;
+    mat[13] = 0.0f;
+    mat[14] = ((-temp * zfar) / temp4);
+    mat[15] = 0.0f;
+}
+
+void matrixPerspectivef2(float *mat, GLfloat fovyInDegrees,
+                      GLfloat aspectRatio, GLfloat znear, GLfloat zfar)
+{
+    float ymax, xmax;
+    ymax = znear * tanf(fovyInDegrees * 3.14f / 360.0f);
+    xmax = ymax * aspectRatio;
+    matrixFrustumf2(mat, -xmax, xmax, -ymax, ymax, znear, zfar);
+}
+
+void matrixMultiply(float *mOut, float *mA, float *mB)
+{
+    mOut[ 0] = mA[ 0]*mB[ 0] + mA[ 1]*mB[ 4] + mA[ 2]*mB[ 8] + mA[ 3]*mB[12];
+    mOut[ 1] = mA[ 0]*mB[ 1] + mA[ 1]*mB[ 5] + mA[ 2]*mB[ 9] + mA[ 3]*mB[13];
+    mOut[ 2] = mA[ 0]*mB[ 2] + mA[ 1]*mB[ 6] + mA[ 2]*mB[10] + mA[ 3]*mB[14];
+    mOut[ 3] = mA[ 0]*mB[ 3] + mA[ 1]*mB[ 7] + mA[ 2]*mB[11] + mA[ 3]*mB[15];
+    
+    mOut[ 4] = mA[ 4]*mB[ 0] + mA[ 5]*mB[ 4] + mA[ 6]*mB[ 8] + mA[ 7]*mB[12];
+    mOut[ 5] = mA[ 4]*mB[ 1] + mA[ 5]*mB[ 5] + mA[ 6]*mB[ 9] + mA[ 7]*mB[13];
+    mOut[ 6] = mA[ 4]*mB[ 2] + mA[ 5]*mB[ 6] + mA[ 6]*mB[10] + mA[ 7]*mB[14];
+    mOut[ 7] = mA[ 4]*mB[ 3] + mA[ 5]*mB[ 7] + mA[ 6]*mB[11] + mA[ 7]*mB[15];
+    
+    mOut[ 8] = mA[ 8]*mB[ 0] + mA[ 9]*mB[ 4] + mA[10]*mB[ 8] + mA[11]*mB[12];
+    mOut[ 9] = mA[ 8]*mB[ 1] + mA[ 9]*mB[ 5] + mA[10]*mB[ 9] + mA[11]*mB[13];
+    mOut[10] = mA[ 8]*mB[ 2] + mA[ 9]*mB[ 6] + mA[10]*mB[10] + mA[11]*mB[14];
+    mOut[11] = mA[ 8]*mB[ 3] + mA[ 9]*mB[ 7] + mA[10]*mB[11] + mA[11]*mB[15];
+    
+    mOut[12] = mA[12]*mB[ 0] + mA[13]*mB[ 4] + mA[14]*mB[ 8] + mA[15]*mB[12];
+    mOut[13] = mA[12]*mB[ 1] + mA[13]*mB[ 5] + mA[14]*mB[ 9] + mA[15]*mB[13];
+    mOut[14] = mA[12]*mB[ 2] + mA[13]*mB[ 6] + mA[14]*mB[10] + mA[15]*mB[14];
+    mOut[15] = mA[12]*mB[ 3] + mA[13]*mB[ 7] + mA[14]*mB[11] + mA[15]*mB[15];
+}
+
+void matrixTranslation(float *mOut,
+                       float fX,
+                       float fY,
+                       float fZ)
+{
+    mOut[ 0]=1.0f;	mOut[ 4]=0.0f;	mOut[ 8]=0.0f;	mOut[12]=fX;
+    mOut[ 1]=0.0f;	mOut[ 5]=1.0f;	mOut[ 9]=0.0f;	mOut[13]=fY;
+    mOut[ 2]=0.0f;	mOut[ 6]=0.0f;	mOut[10]=1.0f;	mOut[14]=fZ;
+    mOut[ 3]=0.0f;	mOut[ 7]=0.0f;	mOut[11]=0.0f;	mOut[15]=1.0f;
+}
+
+
+enum
+{
+    Uniform_PROJMATRIX,
+    Uniform_TINTCOLOR,
+    
+    Uniform_COUNT
+};
+
+struct ObjDrawBuffer
+{
+    TK_TriangleVert *buffer;
+    
+    size_t vertCapacity;
+    size_t vertUsed;
+    
+    GLuint vbo;
+    GLuint vao;
+};
+
+
 typedef struct ObjMeshGroupStruct
 {
     char *mtlName;
-    size_t numTriangles;
-    TK_IndexedTriangle *triangles;
-    
+    ObjDrawBuffer drawbuffer;
     ObjMeshGroupStruct *next;
     
 } ObjMeshGroup;
@@ -34,18 +213,261 @@ struct ObjMesh
     char *objFilename;
     
     // Obj geometry
-    TK_Geometry *geom;
     ObjMeshGroup *rootGroup;
+    ObjMeshGroup *currentGroup;
+    size_t groupCount;
+    
+    // Obj shader
+    int shaderHandle, vsHandle, fsHandle;
+    int attrib[VertexAttrib_COUNT];
+    int uniform[Uniform_COUNT];
     
     // GUI stuff
     ObjDisplayOptions displayOpts;
     bool showInspector;
 };
 
+size_t ObjDrawBuffer_PushVert( ObjDrawBuffer *buff, TK_TriangleVert vert )
+{
+    // Can't add to a buffer anymore once you draw it
+    assert( buff->vbo == 0);
+    
+    if (!buff->buffer)
+    {
+        // Start with space for 100 verts
+        buff->vertUsed = 0;
+        buff->vertCapacity = 100;
+        buff->buffer = (TK_TriangleVert*)malloc( sizeof(TK_TriangleVert)*buff->vertCapacity );
+    }
+    else if (buff->vertUsed == buff->vertCapacity)
+    {
+        // Need to grow buffer
+        size_t newCapacity = buff->vertCapacity * 2;
+        buff->buffer = (TK_TriangleVert*)realloc( buff->buffer, newCapacity*sizeof(TK_TriangleVert) );
+        buff->vertCapacity = newCapacity;
+    }
+    
+    // Now we have space, add the vert
+    size_t vertIndex = buff->vertUsed++;
+    memcpy( buff->buffer + vertIndex, &vert, sizeof(TK_TriangleVert));
+    
+    return vertIndex;
+}
+
 void ObjMesh_addGroup( ObjMesh *mesh, ObjMeshGroup *group)
 {
     group->next = mesh->rootGroup;
     mesh->rootGroup = group;
+    mesh->groupCount++;
+}
+
+void ObjMesh_renderGroup( ObjMesh *mesh, ObjMeshGroup *group )
+{
+    if (group->drawbuffer.vbo == 0) {
+        
+        glGenBuffers( 1, &(group->drawbuffer.vbo) );
+        CHECKGL;
+        
+        glBindBuffer( GL_ARRAY_BUFFER, group->drawbuffer.vbo );
+        CHECKGL;
+        
+        glBufferData( GL_ARRAY_BUFFER, group->drawbuffer.vertUsed * sizeof( TK_TriangleVert ),
+                     group->drawbuffer.buffer, GL_STATIC_DRAW );
+        CHECKGL;
+        
+        glGenVertexArrays(1, &(group->drawbuffer.vao));
+        CHECKGL;
+        
+        glBindVertexArray(group->drawbuffer.vao);
+        CHECKGL;
+        
+    } else {
+//        glBindBuffer( GL_ARRAY_BUFFER, group->drawbuffer.vbo );
+//        CHECKGL;
+        glBindVertexArray(group->drawbuffer.vao);
+        CHECKGL;
+        
+        glBindBuffer( GL_ARRAY_BUFFER, group->drawbuffer.vbo );
+        CHECKGL;
+        
+    }
+    
+    // TODO: bind texture for this group
+    
+    
+    
+    // Bind vertex attributes
+    glEnableVertexAttribArray( mesh->attrib[VertexAttrib_POSITION] );
+    CHECKGL;
+    
+    glVertexAttribPointer( mesh->attrib[VertexAttrib_POSITION], 3, GL_FLOAT, GL_FALSE,
+                          sizeof(TK_TriangleVert), (void*)offset_s( TK_TriangleVert, pos) );
+    CHECKGL;
+    
+//    glEnableVertexAttribArray( mesh->attrib[VertexAttrib_TEXCOORD] );
+//    glVertexAttribPointer( mesh->attrib[VertexAttrib_TEXCOORD], 2, GL_FLOAT, GL_FALSE,
+//                          sizeof(TK_TriangleVert), (void*)offset_s( TK_TriangleVert, st ) );
+//    CHECKGL;
+//    
+//    glEnableVertexAttribArray( mesh->attrib[VertexAttrib_NORMAL] );
+//    glVertexAttribPointer( mesh->attrib[VertexAttrib_NORMAL], 3, GL_FLOAT, GL_FALSE,
+//                          sizeof(TK_TriangleVert), (void*)offset_s( TK_TriangleVert, nrm ) );
+//    CHECKGL;
+    
+    // Draw it!
+//    glDrawArrays(GL_TRIANGLES, 0, (GLsizei)group->drawbuffer.vertUsed );
+    glPointSize( 15.0 );
+    glDrawArrays( GL_POINTS, 0, (GLsizei)group->drawbuffer.vertUsed );
+   CHECKGL;
+}
+
+void checkShaderLog( int shader, int shaderType, const GLchar *shaderText )
+{
+    GLint logLength=0;
+    glGetShaderiv( shader, GL_INFO_LOG_LENGTH, &logLength );
+    if (logLength > 0)
+    {
+        char *log = (char *)malloc(logLength);
+        glGetShaderInfoLog( shader, logLength, NULL, log );
+        printf("--------------------------\n%s\n\n", shaderText );
+        printf("Error compiling %s shader:\n%s\n-------\n",
+               (shaderType==GL_VERTEX_SHADER)?"Vertex":"Fragment",
+               log );
+        free(log);
+    } else {
+        printf( "%s shader compiled successfully...\n",
+               (shaderType==GL_VERTEX_SHADER)?"Vertex":"Fragment" );
+    }
+}
+
+void ObjMesh_setupShader( ObjMesh *mesh )
+{
+    const GLchar *vertex_shader =
+    "#version 330\n"
+    "uniform mat4 ProjMtx;\n"
+    "in vec3 Position;\n"
+    "in vec2 TexCoord;\n"
+    "in vec3 Normal;\n"
+    "out vec2 Frag_UV;\n"
+    "out vec4 Frag_Color;\n"
+    "void main()\n"
+    "{\n"
+    "	Frag_UV = TexCoord;\n"
+    "	Frag_Color = vec4(Normal, 1.0);\n"
+    "	gl_Position = ProjMtx * vec4(Position,1);\n"
+//    "gl_PointSize = 3.0;"
+    "}\n";
+    
+    const GLchar* fragment_shader =
+    "#version 330\n"
+    "uniform sampler2D Texture;\n"
+    "in vec2 Frag_UV;\n"
+    "in vec4 Frag_Color;\n"
+    "out vec4 Out_Color;\n"
+    "void main()\n"
+    "{\n"
+//    "	Out_Color = Frag_Color * texture( Texture, Frag_UV.st);\n"
+    "  Out_Color = vec4(1.0,0.0,1.0,1.0);\n"
+    "}\n";
+    
+    mesh->shaderHandle = glCreateProgram();
+    mesh->vsHandle = glCreateShader(GL_VERTEX_SHADER);
+    mesh->fsHandle = glCreateShader(GL_FRAGMENT_SHADER);
+    CHECKGL;
+    
+    glShaderSource(mesh->vsHandle, 1, &vertex_shader, 0);
+    CHECKGL;
+    
+    glShaderSource(mesh->fsHandle, 1, &fragment_shader, 0);
+    CHECKGL;
+    
+    glCompileShader(mesh->vsHandle);
+    checkShaderLog( mesh->vsHandle, GL_VERTEX_SHADER, vertex_shader );
+    CHECKGL;
+    
+    glCompileShader(mesh->fsHandle);
+    checkShaderLog( mesh->fsHandle, GL_FRAGMENT_SHADER, fragment_shader );
+    CHECKGL;
+    
+    glAttachShader(mesh->shaderHandle, mesh->vsHandle);
+    CHECKGL;
+    
+    glAttachShader(mesh->shaderHandle, mesh->fsHandle);
+    CHECKGL;
+    
+    glLinkProgram(mesh->shaderHandle);
+    CHECKGL;
+    
+    mesh->uniform[Uniform_PROJMATRIX] = glGetUniformLocation( mesh->shaderHandle, "ProjMtx");
+    
+    mesh->attrib[VertexAttrib_POSITION] = glGetAttribLocation( mesh->shaderHandle, "Position");
+    printf("Position Attrib %d\n",mesh->attrib[VertexAttrib_POSITION] );
+    
+    mesh->attrib[VertexAttrib_TEXCOORD] = glGetAttribLocation( mesh->shaderHandle, "TexCoord" );
+    printf("TexCoord Attrib %d\n",mesh->attrib[VertexAttrib_TEXCOORD] );
+    
+    mesh->attrib[VertexAttrib_NORMAL] = glGetAttribLocation( mesh->shaderHandle, "Normal" );
+    printf("Normal Attrib %d\n",mesh->attrib[VertexAttrib_NORMAL] );
+    
+//    g_AttribLocationTex = glGetUniformLocation(g_ShaderHandle, "Texture");
+//    g_AttribLocationProjMtx = glGetUniformLocation(g_ShaderHandle, "ProjMtx");
+//    g_AttribLocationPosition = glGetAttribLocation(g_ShaderHandle, "Position");
+//    g_AttribLocationUV = glGetAttribLocation(g_ShaderHandle, "UV");
+//    g_AttribLocationColor = glGetAttribLocation(g_ShaderHandle, "Color");
+    
+}
+
+void ObjMesh_renderAll( ObjMesh *mesh )
+{
+    
+    if (!mesh->shaderHandle) {
+        ObjMesh_setupShader( mesh );
+        CHECKGL;
+    }
+
+
+    ImGuiIO& io = ImGui::GetIO();
+    int fb_width = (int)(io.DisplaySize.x * io.DisplayFramebufferScale.x);
+    int fb_height = (int)(io.DisplaySize.y * io.DisplayFramebufferScale.y);
+//    int fb_width = (int)(io.DisplaySize.x);
+//    int fb_height = (int)(io.DisplaySize.y);
+
+    
+    // Setup viewport, orthographic projection matrix
+    glViewport(0, 0, (GLsizei)fb_width, (GLsizei)fb_height);
+    const float ortho_projection[4][4] =
+    {
+        { 2.0f/1.0, 0.0f,                   0.0f, 0.0f },
+        { 0.0f,                  2.0f/1.0, 0.0f, 0.0f },
+        { 0.0f,                  0.0f,                  -1.0f, 0.0f },
+        {-1.0f,                  1.0f,                   0.0f, 1.0f },
+    };
+    
+    float proj[16];
+    float modelview[16];
+    
+    float modelViewProj[16];
+    
+    matrixPerspectivef2(proj, 90.0, (float)fb_width/(float)fb_height, 0.01, 1000.0 );
+    matrixTranslation( modelview, 0.0, 0.5, -1.5 );
+    
+    matrixMultiply( modelViewProj,  modelview, proj );
+    
+    
+    glUseProgram( mesh->shaderHandle );
+//    glUniform1i(g_AttribLocationTex, 0);
+//    glUniformMatrix4fv(g_AttribLocationProjMtx, 1, GL_FALSE, &ortho_projection[0][0]);
+//   glUniformMatrix4fv( mesh->uniform[Uniform_PROJMATRIX], 1, GL_FALSE, &ortho_projection[0][0] );
+   glUniformMatrix4fv( mesh->uniform[Uniform_PROJMATRIX], 1, GL_FALSE, modelViewProj );
+    
+    CHECKGL;
+    
+    for (ObjMeshGroup *group = mesh->rootGroup;
+         group; group = group->next ) {
+        ObjMesh_renderGroup( mesh, group );
+        CHECKGL;
+    }
+
 }
 
 void *readEntireFile( const char *filename, size_t *out_filesz )
@@ -81,7 +503,6 @@ void *readEntireFile( const char *filename, size_t *out_filesz )
     
 }
 
-
 // FIXME: have a single error callback
 static void error_callback(int error, const char* description)
 {
@@ -93,6 +514,33 @@ void objviewerErrorMessage( size_t lineNum, const char *message, void *userData 
     printf("ERROR on line %zu: %s\n", lineNum, message );
 }
 
+void objviewerMaterial( const char *materialName, void *userData )
+{
+    ObjMesh *mesh = (ObjMesh*)userData;
+
+    ObjMeshGroup *group = (ObjMeshGroup*)malloc(sizeof(ObjMeshGroup));
+    memset( group, 0, sizeof(ObjMeshGroup));
+    
+    group->mtlName = strdup( materialName );
+
+    ObjMesh_addGroup( mesh, group );
+    
+    mesh->currentGroup = group;
+}
+
+void objviewerTriangle( TK_TriangleVert a, TK_TriangleVert b, TK_TriangleVert c, void *userData )
+{
+    ObjMesh *mesh = (ObjMesh*)userData;
+    ObjMeshGroup *group = mesh->currentGroup;
+    assert(group);
+    
+    // Add the triangle to the current material group
+    ObjDrawBuffer_PushVert( &group->drawbuffer, a );
+    ObjDrawBuffer_PushVert( &group->drawbuffer, b );
+    ObjDrawBuffer_PushVert( &group->drawbuffer, c );
+}
+
+#if 0
 void objviewerGeometry( TK_Geometry *geom, void *userData)
 {
     ObjMesh *mesh = (ObjMesh*)userData;
@@ -106,13 +554,23 @@ void objviewerTriangleGroup( const char *mtlname, size_t numTriangles,
 {
     ObjMesh *mesh = (ObjMesh*)userData;
     ObjMeshGroup *group = (ObjMeshGroup*)malloc(sizeof(ObjMeshGroup));
+    memset( group, 0, sizeof(ObjMeshGroup));
     
     group->mtlName = strdup( mtlname );
-    group->numTriangles = numTriangles;
-    group->triangles = triangles;
+    // FIXME: make dynamic
+    group->drawbuffer.numTriangleIndexes = numTriangles;
+    
+    // Go through and re-index the triangles for opengl
+    for (size_t i=0; i < numTriangles; i++)
+    {
+        ObjDrawVert vert = ObjDrawVert_FromIndexTriangleVert( draw)
+        group->drawbuffer.triangleIndexes[i*3+0] = triangles[
+    }
+    
     
     ObjMesh_addGroup( mesh, group );
 }
+#endif
 
 
 
@@ -136,8 +594,8 @@ int main(int argc, char *argv[])
     TK_ObjDelegate objDelegate = {};
     objDelegate.userData = (void*)&theMesh;
     objDelegate.error = objviewerErrorMessage;
-    objDelegate.geometry = objviewerGeometry;
-    objDelegate.triangleGroup = objviewerTriangleGroup;
+    objDelegate.material = objviewerMaterial;
+    objDelegate.triangle = objviewerTriangle;
     
     // Extract filename from OBJ path
     char *objFilename = strrchr( argv[1], '/');
@@ -177,8 +635,8 @@ int main(int argc, char *argv[])
         
 //    bool show_test_window = true;
     bool show_another_window = false;
-    bool show_test_window = true;
-    ImVec4 clear_color = ImColor(114, 144, 154);
+    bool show_test_window = false;
+    ImVec4 clear_color = ImColor(25, 25, 40);
     
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -219,7 +677,7 @@ int main(int argc, char *argv[])
                 ImGui::BulletText( "Faces: %ld", theMesh.objDelegate->numFaces );
                 ImGui::BulletText( "Triangles: %ld", theMesh.objDelegate->numTriangles );
                 ImGui::BulletText( "Verts: %ld", theMesh.objDelegate->numVerts );
-                ImGui::BulletText( "Materials: %ld", theMesh.geom->numMaterials );
+                ImGui::BulletText( "Materials: %ld", theMesh.groupCount );
                 ImGui::Separator();
             }
             if (ImGui::CollapsingHeader("Display"))
@@ -243,7 +701,10 @@ int main(int argc, char *argv[])
         glfwGetFramebufferSize(window, &display_w, &display_h);
         glViewport(0, 0, display_w, display_h);
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+        
+        ObjMesh_renderAll( &theMesh );
+        
         ImGui::Render();
         glfwSwapBuffers(window);
     }
