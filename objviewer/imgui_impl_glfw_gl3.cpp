@@ -334,6 +334,14 @@ bool    ImGui_ImplGlfwGL3_Init(GLFWwindow* window, bool install_callbacks)
     return true;
 }
 
+void ImGui_ImplGlfwGL3_GetMousePos( double *mouse_x, double *mouse_y, bool *mousePressed )
+{
+    glfwGetCursorPos(g_Window, mouse_x, mouse_y);
+    mousePressed[0] = g_MousePressed[0];
+    mousePressed[1] = g_MousePressed[1];
+    mousePressed[2] = g_MousePressed[2];
+}
+
 void ImGui_ImplGlfwGL3_Shutdown()
 {
     ImGui_ImplGlfwGL3_InvalidateDeviceObjects();

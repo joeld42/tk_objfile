@@ -138,6 +138,20 @@ void matrixPerspectivef2(float *mat, GLfloat fovyInDegrees,
     matrixFrustumf2(mat, -xmax, xmax, -ymax, ymax, znear, zfar);
 }
 
+void matrixDbgPrint( char *message, float *m )
+{
+    printf("%10s: %3.2f %3.2f %3.2f %3.2f\n"
+           "            %3.2f %3.2f %3.2f %3.2f\n"
+           "            %3.2f %3.2f %3.2f %3.2f\n"
+           "            %3.2f %3.2f %3.2f %3.2f\n",
+           message,
+           m[0], m[1], m[2], m[3],
+           m[4], m[5], m[6], m[7],
+           m[8], m[9], m[10], m[11],
+           m[12], m[13], m[14], m[15] );
+           
+}
+
 void matrixMultiply(float *mOut, float *mA, float *mB)
 {
     mOut[ 0] = mA[ 0]*mB[ 0] + mA[ 1]*mB[ 4] + mA[ 2]*mB[ 8] + mA[ 3]*mB[12];
@@ -172,6 +186,119 @@ void matrixTranslation(float *mOut,
     mOut[ 3]=0.0f;	mOut[ 7]=0.0f;	mOut[11]=0.0f;	mOut[15]=1.0f;
 }
 
+inline void vec3SetXYZ( float *vec, float x, float y, float z)
+{
+    vec[0] = x;
+    vec[1] = y;
+    vec[2] = z;
+}
+
+void vec3CrossProduct( float *vOut, float *v1, float *v2)
+{
+    
+    /* Perform calculation on a dummy VECTOR (result) */
+    vOut[0] = v1[1] * v2[2] - v1[2] * v2[1];
+    vOut[1] = v1[2] * v2[0] - v1[0] * v2[2];
+    vOut[2] = v1[0] * v2[1] - v1[1] * v2[0];
+}
+
+void vec3Normalize(float *vOut, float *vIn)
+{
+    float	f;
+    double temp;
+    
+    temp = (double)(vIn[0] * vIn[0] + vIn[1] * vIn[1] + vIn[2] * vIn[2]);
+    temp = 1.0 / sqrt(temp);
+    f = (float)temp;
+    
+    vOut[0] = vIn[0] * f;
+    vOut[1] = vIn[1] * f;
+    vOut[2] = vIn[2] * f;
+}
+
+void matrixLookAtLH(float *mOut,
+                    float *vEye,
+                    float *vAt,
+                    float *vUp)
+{
+    float f[3], f2[3], vUpActual[3], s[3], u[3];
+    float t[16];
+    float mLookDir[16];
+    
+    f2[0] = vEye[0] - vAt[0];
+    f2[1] = vEye[1] - vAt[1];
+    f2[2] = vEye[2] - vAt[2];
+    
+    vec3Normalize(f, f2);
+    vec3Normalize(vUpActual, vUp);
+    vec3CrossProduct(s, f, vUpActual);
+    vec3CrossProduct(u, s, f);
+    
+    mLookDir[ 0] = s[0];
+    mLookDir[ 1] = u[0];
+    mLookDir[ 2] = -f[0];
+    mLookDir[ 3] = 0;
+    
+    mLookDir[ 4] = s[1];
+    mLookDir[ 5] = u[1];
+    mLookDir[ 6] = -f[1];
+    mLookDir[ 7] = 0;
+    
+    mLookDir[ 8] = s[2];
+    mLookDir[ 9] = u[2];
+    mLookDir[10] = -f[2];
+    mLookDir[11] = 0;
+    
+    mLookDir[12] = 0;
+    mLookDir[13] = 0;
+    mLookDir[14] = 0;
+    mLookDir[15] = 1;
+    
+    matrixTranslation(t, -vEye[0], -vEye[1], -vEye[2]);
+    matrixMultiply(mOut, t, mLookDir);
+}
+
+void matrixLookAtRH(float *mOut,
+                    float *vEye,
+                    float *vAt,
+                    float *vUp)
+{
+    float f2[3], f[3], vUpActual[3], s[3], u[3];
+    float t[16];
+    float mLookDir[16];
+    
+    f2[0] = vAt[0] - vEye[0];
+    f2[1] = vAt[1] - vEye[1];
+    f2[2] = vAt[2] - vEye[2];
+    
+    vec3Normalize(f, f2);
+    vec3Normalize(vUpActual, vUp);
+    vec3CrossProduct(s, f, vUpActual);
+    vec3CrossProduct(u, s, f);
+    
+    mLookDir[ 0] = s[0];
+    mLookDir[ 1] = u[0];
+    mLookDir[ 2] = -f[0];
+    mLookDir[ 3] = 0;
+    
+    mLookDir[ 4] = s[1];
+    mLookDir[ 5] = u[1];
+    mLookDir[ 6] = -f[1];
+    mLookDir[ 7] = 0;
+    
+    mLookDir[ 8] = s[2];
+    mLookDir[ 9] = u[2];
+    mLookDir[10] = -f[2];
+    mLookDir[11] = 0;
+    
+    mLookDir[12] = 0;
+    mLookDir[13] = 0;
+    mLookDir[14] = 0;
+    mLookDir[15] = 1;
+    
+    matrixTranslation(t, -vEye[0], -vEye[1], -vEye[2]);
+    matrixMultiply(mOut, t, mLookDir);
+}
 
 enum
 {
@@ -206,6 +333,9 @@ struct ObjDisplayOptions
     bool wireFrame;
 };
 
+// ================================
+//   ObjMesh
+// ================================
 struct ObjMesh
 {
     // General info
@@ -216,6 +346,11 @@ struct ObjMesh
     ObjMeshGroup *rootGroup;
     ObjMeshGroup *currentGroup;
     size_t groupCount;
+    
+    // Camera
+    float objCenter[3];
+    float camPos[3];
+    float camAngle, camTilt;
     
     // Obj shader
     int shaderHandle, vsHandle, fsHandle;
@@ -417,6 +552,38 @@ void ObjMesh_setupShader( ObjMesh *mesh )
     
 }
 
+void ObjMesh_update( ObjMesh *mesh )
+{
+    static bool mousePressed[3];
+    static bool lastMousePressed[3];
+    double mouseX, mouseY;
+    static bool dragging;
+    static float startAngle;
+    static double startX;
+    
+    ImGui_ImplGlfwGL3_GetMousePos(&mouseX, &mouseY, mousePressed );
+    
+    printf("Mouse pos %f %f\n", mouseX, mouseY );
+    if ((!dragging) && (mousePressed[0])) {
+        dragging = true;
+        startAngle = mesh->camAngle;
+        startX = mouseX;
+    }
+    
+    if (dragging) {
+        printf("DRAGGING: %f\n", mouseX - startX );
+    }
+    
+    if ((dragging) && (!mousePressed[0])) {
+        dragging = false;
+        
+    }
+    
+    for (int i=0; i < 3; i++) {
+        lastMousePressed[i] = mousePressed[i];
+    }
+}
+
 void ObjMesh_renderAll( ObjMesh *mesh )
 {
     
@@ -429,19 +596,9 @@ void ObjMesh_renderAll( ObjMesh *mesh )
     ImGuiIO& io = ImGui::GetIO();
     int fb_width = (int)(io.DisplaySize.x * io.DisplayFramebufferScale.x);
     int fb_height = (int)(io.DisplaySize.y * io.DisplayFramebufferScale.y);
-//    int fb_width = (int)(io.DisplaySize.x);
-//    int fb_height = (int)(io.DisplaySize.y);
-
     
-    // Setup viewport, orthographic projection matrix
+    // Setup viewport,  projection matrix
     glViewport(0, 0, (GLsizei)fb_width, (GLsizei)fb_height);
-    const float ortho_projection[4][4] =
-    {
-        { 2.0f/1.0, 0.0f,                   0.0f, 0.0f },
-        { 0.0f,                  2.0f/1.0, 0.0f, 0.0f },
-        { 0.0f,                  0.0f,                  -1.0f, 0.0f },
-        {-1.0f,                  1.0f,                   0.0f, 1.0f },
-    };
     
     float proj[16];
     float modelview[16];
@@ -449,16 +606,17 @@ void ObjMesh_renderAll( ObjMesh *mesh )
     float modelViewProj[16];
     
     matrixPerspectivef2(proj, 90.0, (float)fb_width/(float)fb_height, 0.01, 1000.0 );
-    matrixTranslation( modelview, 0.0, 0.5, -1.5 );
+//    matrixTranslation( modelview, 0.0, 0.0, -1.5 );
+    float vUp[3] = { 0.0, 1.0, 0.0 };
+    vec3SetXYZ( mesh->camPos, 0, 0, 1.5 );
+    vec3SetXYZ( mesh->objCenter, 0, 0, 0 );
+    matrixLookAtRH( modelview, mesh->camPos, mesh->objCenter, vUp );
     
-    matrixMultiply( modelViewProj,  modelview, proj );
-    
+    matrixMultiply( modelViewProj, modelview, proj );
+//    matrixDbgPrint( "modelview", modelview );
     
     glUseProgram( mesh->shaderHandle );
-//    glUniform1i(g_AttribLocationTex, 0);
-//    glUniformMatrix4fv(g_AttribLocationProjMtx, 1, GL_FALSE, &ortho_projection[0][0]);
-//   glUniformMatrix4fv( mesh->uniform[Uniform_PROJMATRIX], 1, GL_FALSE, &ortho_projection[0][0] );
-   glUniformMatrix4fv( mesh->uniform[Uniform_PROJMATRIX], 1, GL_FALSE, modelViewProj );
+    glUniformMatrix4fv( mesh->uniform[Uniform_PROJMATRIX], 1, GL_FALSE, modelViewProj );
     
     CHECKGL;
     
@@ -696,6 +854,9 @@ int main(int argc, char *argv[])
             ImGui::ShowTestWindow(&show_test_window);
         }
         
+        // Update
+         ObjMesh_update( &theMesh );
+                                                             
         // Rendering
         int display_w, display_h;
         glfwGetFramebufferSize(window, &display_w, &display_h);
