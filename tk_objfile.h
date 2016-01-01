@@ -87,8 +87,9 @@ typedef struct
     void (*error)( size_t lineNumber, const char *message, void *userData );
 
     // "Triangle Soup" API -- calls triangles one at a time, grouped by material
-    void (*material)( const char *mtlName, void *userData );
+    void (*material)( const char *mtlName, size_t numTriangles, void *userData );
     void (*triangle)( TK_TriangleVert a, TK_TriangleVert b, TK_TriangleVert c, void *userData );
+    void (*finished)( void *userData );
     
     // "Indexed" API -- batches of triangles, preserving the indexing of the obj file. Still
     // probably better to run it through a tri-stripper or something.
@@ -630,14 +631,6 @@ void TKimpl_GetIndexedTriangle( TK_Triangle *tri, TK_Geometry *geom, TK_IndexedT
     tri->vertC.nrm[2] = geom->vertNrm[ndxTri.vertC.normIndex*3 + 2];
     tri->vertC.st[0] = geom->vertSt[ndxTri.vertC.stIndex*3 + 0];
     tri->vertC.st[1] = geom->vertSt[ndxTri.vertC.stIndex*3 + 1];
-
-//    // DBG
-//    for (int i=0; i < 3; i++)
-//    {
-//        tri->vertA.pos[i] = -0.5;
-//        tri->vertB.pos[i] = -0.5;
-//        tri->vertC.pos[i] = -0.5;
-//    }
 }
 
 void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDelegate )
@@ -738,7 +731,9 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDele
                                               TKIMPL_MAX_MATERIAL_NAME );
                     
                     // emit the material name
-                    objDelegate->material( mtlName, objDelegate->userData );
+                    objDelegate->material( mtlName,
+                                          geom->materials[mi].numTriangles,
+                                          objDelegate->userData );
                 }
                 // Now emit all the triangles for the material
                 if (objDelegate->triangle)
@@ -752,6 +747,12 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDele
                 }
             }
         }
+    }
+    
+    // Now tell the delegate we're finished emitting data
+    if (objDelegate->finished)
+    {
+        objDelegate->finished( objDelegate->userData );
     }
     
 #if 0

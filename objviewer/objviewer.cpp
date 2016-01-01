@@ -16,6 +16,8 @@
 #define offset_d(i,f)    (long(&(i)->f) - long(i))
 #define offset_s(t,f)    offset_d((t*)1000, f)
 
+#define DEG2RAD(x) (x*M_PI/180.0)
+
 enum
 {
     VertexAttrib_POSITION,
@@ -351,6 +353,7 @@ struct ObjMesh
     float objCenter[3];
     float camPos[3];
     float camAngle, camTilt;
+    size_t totalNumTriangles;
     
     // Obj shader
     int shaderHandle, vsHandle, fsHandle;
@@ -366,6 +369,10 @@ size_t ObjDrawBuffer_PushVert( ObjDrawBuffer *buff, TK_TriangleVert vert )
 {
     // Can't add to a buffer anymore once you draw it
     assert( buff->vbo == 0);
+
+    // Make sure we have enough space for the new vert
+    assert( buff->buffer );
+    assert( buff->vertUsed < buff->vertCapacity );
     
     if (!buff->buffer)
     {
@@ -430,7 +437,6 @@ void ObjMesh_renderGroup( ObjMesh *mesh, ObjMeshGroup *group )
     // TODO: bind texture for this group
     
     
-    
     // Bind vertex attributes
     glEnableVertexAttribArray( mesh->attrib[VertexAttrib_POSITION] );
     CHECKGL;
@@ -439,20 +445,20 @@ void ObjMesh_renderGroup( ObjMesh *mesh, ObjMeshGroup *group )
                           sizeof(TK_TriangleVert), (void*)offset_s( TK_TriangleVert, pos) );
     CHECKGL;
     
-//    glEnableVertexAttribArray( mesh->attrib[VertexAttrib_TEXCOORD] );
-//    glVertexAttribPointer( mesh->attrib[VertexAttrib_TEXCOORD], 2, GL_FLOAT, GL_FALSE,
-//                          sizeof(TK_TriangleVert), (void*)offset_s( TK_TriangleVert, st ) );
-//    CHECKGL;
-//    
-//    glEnableVertexAttribArray( mesh->attrib[VertexAttrib_NORMAL] );
-//    glVertexAttribPointer( mesh->attrib[VertexAttrib_NORMAL], 3, GL_FLOAT, GL_FALSE,
-//                          sizeof(TK_TriangleVert), (void*)offset_s( TK_TriangleVert, nrm ) );
-//    CHECKGL;
+    glEnableVertexAttribArray( mesh->attrib[VertexAttrib_TEXCOORD] );
+    glVertexAttribPointer( mesh->attrib[VertexAttrib_TEXCOORD], 2, GL_FLOAT, GL_FALSE,
+                          sizeof(TK_TriangleVert), (void*)offset_s( TK_TriangleVert, st ) );
+    CHECKGL;
+    
+    glEnableVertexAttribArray( mesh->attrib[VertexAttrib_NORMAL] );
+    glVertexAttribPointer( mesh->attrib[VertexAttrib_NORMAL], 3, GL_FLOAT, GL_FALSE,
+                          sizeof(TK_TriangleVert), (void*)offset_s( TK_TriangleVert, nrm ) );
+    CHECKGL;
     
     // Draw it!
-//    glDrawArrays(GL_TRIANGLES, 0, (GLsizei)group->drawbuffer.vertUsed );
-    glPointSize( 15.0 );
-    glDrawArrays( GL_POINTS, 0, (GLsizei)group->drawbuffer.vertUsed );
+    glDrawArrays(GL_TRIANGLES, 0, (GLsizei)group->drawbuffer.vertUsed );
+//    glPointSize( 15.0 );
+//    glDrawArrays( GL_POINTS, 0, (GLsizei)group->drawbuffer.vertUsed );
    CHECKGL;
 }
 
@@ -502,7 +508,7 @@ void ObjMesh_setupShader( ObjMesh *mesh )
     "void main()\n"
     "{\n"
 //    "	Out_Color = Frag_Color * texture( Texture, Frag_UV.st);\n"
-    "  Out_Color = vec4(1.0,0.0,1.0,1.0);\n"
+    "  Out_Color = Frag_Color;\n"
     "}\n";
     
     mesh->shaderHandle = glCreateProgram();
@@ -550,6 +556,8 @@ void ObjMesh_setupShader( ObjMesh *mesh )
 //    g_AttribLocationUV = glGetAttribLocation(g_ShaderHandle, "UV");
 //    g_AttribLocationColor = glGetAttribLocation(g_ShaderHandle, "Color");
     
+    glEnable( GL_DEPTH_TEST );
+    
 }
 
 void ObjMesh_update( ObjMesh *mesh )
@@ -563,7 +571,7 @@ void ObjMesh_update( ObjMesh *mesh )
     
     ImGui_ImplGlfwGL3_GetMousePos(&mouseX, &mouseY, mousePressed );
     
-    printf("Mouse pos %f %f\n", mouseX, mouseY );
+    //printf("Mouse pos %f %f\n", mouseX, mouseY );
     if ((!dragging) && (mousePressed[0])) {
         dragging = true;
         startAngle = mesh->camAngle;
@@ -572,12 +580,24 @@ void ObjMesh_update( ObjMesh *mesh )
     
     if (dragging) {
         printf("DRAGGING: %f\n", mouseX - startX );
+//        float camAngle, camTilt;
+        mesh->camAngle = startAngle + (mouseX - startX) * 0.5;
+
     }
     
     if ((dragging) && (!mousePressed[0])) {
         dragging = false;
         
     }
+    
+    // update camPos based on camAngle
+    float radius = 5.0; // FIXME: get from OBJ bounding radius
+    float angRad = DEG2RAD( mesh->camAngle );
+    vec3SetXYZ( mesh->camPos,
+               mesh->objCenter[0] + cos( angRad ) * radius,
+               mesh->objCenter[1],
+               mesh->objCenter[2] + sin(angRad) * radius );
+//    printf("camPos %f %f %f\n", mesh->camPos[0], mesh->camPos[1], mesh->camPos[2] );
     
     for (int i=0; i < 3; i++) {
         lastMousePressed[i] = mousePressed[i];
@@ -605,11 +625,17 @@ void ObjMesh_renderAll( ObjMesh *mesh )
     
     float modelViewProj[16];
     
-    matrixPerspectivef2(proj, 90.0, (float)fb_width/(float)fb_height, 0.01, 1000.0 );
+    matrixPerspectivef2(proj, 50.0, (float)fb_width/(float)fb_height, 0.01, 1000.0 );
 //    matrixTranslation( modelview, 0.0, 0.0, -1.5 );
     float vUp[3] = { 0.0, 1.0, 0.0 };
-    vec3SetXYZ( mesh->camPos, 0, 0, 1.5 );
-    vec3SetXYZ( mesh->objCenter, 0, 0, 0 );
+//    vec3SetXYZ( mesh->camPos, 0, 0, 1.5 );
+    
+//    static float ang = 0.0;
+//    float radius = 2.5;
+//    vec3SetXYZ( mesh->camPos, cos(ang)*radius, 0.0, sin(ang)*radius );
+//    ang += 0.01;
+    
+//    vec3SetXYZ( mesh->objCenter, 0, 0, 0 );
     matrixLookAtRH( modelview, mesh->camPos, mesh->objCenter, vUp );
     
     matrixMultiply( modelViewProj, modelview, proj );
@@ -672,18 +698,23 @@ void objviewerErrorMessage( size_t lineNum, const char *message, void *userData 
     printf("ERROR on line %zu: %s\n", lineNum, message );
 }
 
-void objviewerMaterial( const char *materialName, void *userData )
+void objviewerMaterial( const char *materialName, size_t numTriangles, void *userData )
 {
     ObjMesh *mesh = (ObjMesh*)userData;
 
     ObjMeshGroup *group = (ObjMeshGroup*)malloc(sizeof(ObjMeshGroup));
     memset( group, 0, sizeof(ObjMeshGroup));
     
+    // Set up the material
     group->mtlName = strdup( materialName );
+    group->drawbuffer.buffer = (TK_TriangleVert*)malloc( sizeof(TK_TriangleVert)*numTriangles*3 );
+    group->drawbuffer.vertCapacity = numTriangles*3;
+    group->drawbuffer.vertUsed = 0;
 
     ObjMesh_addGroup( mesh, group );
     
     mesh->currentGroup = group;
+    mesh->totalNumTriangles += numTriangles;
 }
 
 void objviewerTriangle( TK_TriangleVert a, TK_TriangleVert b, TK_TriangleVert c, void *userData )
@@ -696,6 +727,28 @@ void objviewerTriangle( TK_TriangleVert a, TK_TriangleVert b, TK_TriangleVert c,
     ObjDrawBuffer_PushVert( &group->drawbuffer, a );
     ObjDrawBuffer_PushVert( &group->drawbuffer, b );
     ObjDrawBuffer_PushVert( &group->drawbuffer, c );
+    
+    // Add to the centeroid
+    for (int i=0; i < 3; i++)
+    {
+        mesh->objCenter[i] += a.pos[i];
+        mesh->objCenter[i] += b.pos[i];
+        mesh->objCenter[i] += c.pos[i];
+    }
+}
+
+void objviewerFinished( void *userData )
+{
+    ObjMesh *mesh = (ObjMesh*)userData;
+    double centeroidDivisor = mesh->totalNumTriangles * 3;
+    mesh->objCenter[0] /= centeroidDivisor;
+    mesh->objCenter[1] /= centeroidDivisor;
+    mesh->objCenter[2] /= centeroidDivisor;
+    
+    printf("CENTEROID: %f %f %f\n",
+           mesh->objCenter[0],
+           mesh->objCenter[1],
+           mesh->objCenter[2] );
 }
 
 #if 0
@@ -754,6 +807,7 @@ int main(int argc, char *argv[])
     objDelegate.error = objviewerErrorMessage;
     objDelegate.material = objviewerMaterial;
     objDelegate.triangle = objviewerTriangle;
+    objDelegate.finished = objviewerFinished;
     
     // Extract filename from OBJ path
     char *objFilename = strrchr( argv[1], '/');

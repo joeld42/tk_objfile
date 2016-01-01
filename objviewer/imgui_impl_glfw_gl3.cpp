@@ -337,9 +337,10 @@ bool    ImGui_ImplGlfwGL3_Init(GLFWwindow* window, bool install_callbacks)
 void ImGui_ImplGlfwGL3_GetMousePos( double *mouse_x, double *mouse_y, bool *mousePressed )
 {
     glfwGetCursorPos(g_Window, mouse_x, mouse_y);
-    mousePressed[0] = g_MousePressed[0];
-    mousePressed[1] = g_MousePressed[1];
-    mousePressed[2] = g_MousePressed[2];
+    for (int i=0; i < 3; i++)
+    {
+        mousePressed[i] = glfwGetMouseButton(g_Window, i );
+    }
 }
 
 void ImGui_ImplGlfwGL3_Shutdown()
