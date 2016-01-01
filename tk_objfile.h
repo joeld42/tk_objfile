@@ -271,8 +271,6 @@ void TKimpl_parseFaceIndices( char *token, char *endtoken,
     for (int i=0; i < numSlash+1; i++) {
         number[i] = TKimpl_parseIndex( numberDelim[i], numberDelim[i+1]-1 );
         if (number[i]>0) number[i]--; // OBJ file indices are 1-based
-        printf("numToken %d: %s = %ld\n", i,
-               TKimpl_printToken(numberDelim[i], numberDelim[i+1]-1), number[i]);
     }
     
     // decide which lists indexes represent based on number of slashes
@@ -541,14 +539,14 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                     currMtl = useMtl;
                     printf("Usemtl is %p\n", useMtl );
                 } else if (TKimpl_compareToken("f", token, endtoken)) {
-                    printf("---- face ---");
+//                    printf("---- face ---\n");
                     TK_IndexedTriangle tri;
                     TK_IndexedVert vert;
                     int count = 0;
                     do {
                         TKimpl_nextToken( &token, &endtoken, endline );
                         if (token) {
-                            printf("TOKEN: %s\n", TKimpl_printToken(token, endtoken));
+//                            printf("TOKEN: %s\n", TKimpl_printToken(token, endtoken));
 
                             if (parseType==TKimpl_ParseTypeFull)
                             {
@@ -564,18 +562,18 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                                     tri.vertB = vert;
 //                                    printf("assigning vert B %d %d %d\n",
 //                                          tri.vertB.posIndex, tri.vertB.stIndex, tri.vertB.normIndex );
-                                } else if (count > 3) {
+                                } else if (count >= 3) {
                                     tri.vertB = tri.vertC;
 //                                    printf("rotating vert C->B\n");
                                     
                                 }
                                 
-                                if (count > 2) {
+                                if (count >= 2) {
                                     tri.vertC = vert;
 //                                    printf("assigning vert C %d %d %d\n",
 //                                          tri.vertC.posIndex, tri.vertC.stIndex, tri.vertC.normIndex );
-
-                                    printf("adding triangle %zu\n", currMtl->numTriangles );
+//
+//                                    printf("adding triangle %zu\n", currMtl->numTriangles );
                                     currMtl->triangles[ currMtl->numTriangles++ ] = tri;
                                 }
                             }
@@ -590,7 +588,7 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                         objDelegate->numFaces += 1;
                         objDelegate->numTriangles += triCount;
                     }
-                    printf("... face done (%d verts).\n", count);
+//                    printf("... face done (%d verts).\n", count);
                 }
             }
         }

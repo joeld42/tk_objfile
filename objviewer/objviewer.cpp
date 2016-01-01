@@ -374,24 +374,11 @@ size_t ObjDrawBuffer_PushVert( ObjDrawBuffer *buff, TK_TriangleVert vert )
     assert( buff->buffer );
     assert( buff->vertUsed < buff->vertCapacity );
     
-    if (!buff->buffer)
-    {
-        // Start with space for 100 verts
-        buff->vertUsed = 0;
-        buff->vertCapacity = 100;
-        buff->buffer = (TK_TriangleVert*)malloc( sizeof(TK_TriangleVert)*buff->vertCapacity );
-    }
-    else if (buff->vertUsed == buff->vertCapacity)
-    {
-        // Need to grow buffer
-        size_t newCapacity = buff->vertCapacity * 2;
-        buff->buffer = (TK_TriangleVert*)realloc( buff->buffer, newCapacity*sizeof(TK_TriangleVert) );
-        buff->vertCapacity = newCapacity;
-    }
-    
     // Now we have space, add the vert
     size_t vertIndex = buff->vertUsed++;
     memcpy( buff->buffer + vertIndex, &vert, sizeof(TK_TriangleVert));
+    
+    printf("PushVert: used is %d\n", vertIndex );
     
     return vertIndex;
 }
@@ -456,6 +443,10 @@ void ObjMesh_renderGroup( ObjMesh *mesh, ObjMeshGroup *group )
     CHECKGL;
     
     // Draw it!
+//    printf("Drawing %d verts (%d tris)\n",
+//           (GLsizei)group->drawbuffer.vertUsed,
+//           (GLsizei)group->drawbuffer.vertUsed / 3 );
+    
     glDrawArrays(GL_TRIANGLES, 0, (GLsizei)group->drawbuffer.vertUsed );
 //    glPointSize( 15.0 );
 //    glDrawArrays( GL_POINTS, 0, (GLsizei)group->drawbuffer.vertUsed );
@@ -508,7 +499,8 @@ void ObjMesh_setupShader( ObjMesh *mesh )
     "void main()\n"
     "{\n"
 //    "	Out_Color = Frag_Color * texture( Texture, Frag_UV.st);\n"
-    "  Out_Color = Frag_Color;\n"
+      "  Out_Color = vec4( Frag_UV.x, 0.0, Frag_UV.y, 1.0);"
+//    "  Out_Color = Frag_Color;\n"
     "}\n";
     
     mesh->shaderHandle = glCreateProgram();
@@ -579,10 +571,7 @@ void ObjMesh_update( ObjMesh *mesh )
     }
     
     if (dragging) {
-        printf("DRAGGING: %f\n", mouseX - startX );
-//        float camAngle, camTilt;
         mesh->camAngle = startAngle + (mouseX - startX) * 0.5;
-
     }
     
     if ((dragging) && (!mousePressed[0])) {
