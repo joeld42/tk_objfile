@@ -90,18 +90,6 @@ typedef struct
     void (*material)( const char *mtlName, size_t numTriangles, void *userData );
     void (*triangle)( TK_TriangleVert a, TK_TriangleVert b, TK_TriangleVert c, void *userData );
     
-    // "Indexed" API -- batches of triangles, preserving the indexing of the obj file. Still
-    // probably better to run it through a tri-stripper or something.
-    
-    // This will be called once before the triangleGroups, and will give you all the vert
-    // buffers used by the triangle groups. You can get at all of the data from this if you want.
-    void (*geometry)( TK_Geometry *geom, void *userData);
-    
-    // Convienance callback, you can get at all this info through the previous geometry
-    // callback, but this is a helper that will iterate the material groups for you
-    void (*triangleGroup)( const char *mtlname, size_t numTriangles,
-                           TK_IndexedTriangle *triangles, void *userData );
-    
     // Scratch memory needed by parser.
     void *scratchMem;
     size_t scratchMemSize;
@@ -412,8 +400,6 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
         while ( ((*line==' ') || (*line=='\t')) && (line != endline)) {
             line++;
         }
-
-//        printf("LINE: [%.*s]\n",  (int)(endline-line), line );
         
         // Skip Comments
         if (line[0]!='#')
@@ -454,8 +440,6 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                             return;
                         }
                         
-                        // TODO: push vert onto vert list
-//                        printf("VERT: %f %f %f\n", vertPos[0], vertPos[1], vertPos[2] );
                         geom->numVertPos++;
                     }
                     
@@ -485,8 +469,6 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                             return;
                         }
                         
-                        // TODO: push normal onto nrm list
-//                        printf("NRM: %f %f %f\n", vertNrm[0], vertNrm[1], vertNrm[2] );
                         geom->numVertNrm++;
                     }
                 } else if (TKimpl_compareToken("vt", token, endtoken)) {
@@ -509,7 +491,7 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                         if (!TKImpl_parseFloat( objDelegate, token, endtoken, &(vertSt[1]) )) {
                             return;
                         }
-//                        printf("ST: %f %f\n", vertSt[0], vertSt[1] );
+
                         geom->numVertSt++;
                     }
                 } else if (TKimpl_compareToken("usemtl", token, endtoken)) {
@@ -533,15 +515,12 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                     currMtl = useMtl;
 
                 } else if (TKimpl_compareToken("f", token, endtoken)) {
-//                    printf("---- face ---\n");
                     TK_IndexedTriangle tri;
                     TK_IndexedVert vert;
                     int count = 0;
                     do {
                         TKimpl_nextToken( &token, &endtoken, endline );
                         if (token) {
-//                            printf("TOKEN: %s\n", TKimpl_printToken(token, endtoken));
-
                             if (parseType==TKimpl_ParseTypeFull)
                             {
                                 TKimpl_parseFaceIndices(token, endtoken,
@@ -550,24 +529,14 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                                                         &(vert.normIndex) );
                                 if (count==0) {
                                     tri.vertA = vert;
-//                                    printf("assigning vert A %d %d %d\n",
-//                                          tri.vertA.posIndex, tri.vertA.stIndex, tri.vertA.normIndex );
                                 } else if (count==1) {
                                     tri.vertB = vert;
-//                                    printf("assigning vert B %d %d %d\n",
-//                                          tri.vertB.posIndex, tri.vertB.stIndex, tri.vertB.normIndex );
                                 } else if (count >= 3) {
                                     tri.vertB = tri.vertC;
-//                                    printf("rotating vert C->B\n");
-                                    
                                 }
                                 
                                 if (count >= 2) {
                                     tri.vertC = vert;
-//                                    printf("assigning vert C %d %d %d\n",
-//                                          tri.vertC.posIndex, tri.vertC.stIndex, tri.vertC.normIndex );
-//
-//                                    printf("adding triangle %zu\n", currMtl->numTriangles );
                                     currMtl->triangles[ currMtl->numTriangles++ ] = tri;
                                 }
                             }
@@ -740,30 +709,6 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDele
             }
         }
     }
-    
-#if 0
-    // Call through the geometry api
-    if (objDelegate->geometry) {
-        objDelegate->geometry( geom, objDelegate->userData );
-    }
-    
-    // Next, call through the "index triangle group" api
-    if (objDelegate->triangleGroup) {
-        for (int mi=0; mi < geom->numMaterials; mi++) {
-            
-            if (geom->materials[mi].numTriangles > 0) {
-                char mtlName[TKIMPL_MAX_MATERIAL_NAME];
-                TKimpl_stringDelimMtlName(mtlName, geom->materials[mi].mtlName,
-                                          TKIMPL_MAX_MATERIAL_NAME );
-
-                objDelegate->triangleGroup( mtlName, geom->materials[mi].numTriangles,
-                                           geom->materials[mi].triangles, objDelegate->userData );
-            }
-        }
-    }
-#endif
-
-    
 }
 
 
