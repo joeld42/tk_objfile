@@ -10,10 +10,6 @@
 // code to implement file loading, printing and allocation.
 
 // Compute the bounding box for an obj, to show how to use the simple "triangle soup" API.
-//
-// Note that this would be more efficent to use the triangle group API instead of the
-// "triangle soup" api, but this is for illustration purposes, and also this may be more
-// correct if there are extra verts in the OBJ file that are
 struct BoundingBox {
     float minPos[3];
     float maxPos[3];
@@ -48,16 +44,6 @@ void bboxProcessTriangle( TK_TriangleVert a, TK_TriangleVert b, TK_TriangleVert 
         bbox->minPos[i] = minFloat( a.pos[i], bbox->minPos[i] );
         bbox->maxPos[i] = maxFloat( a.pos[i], bbox->maxPos[i] );
     }
-}
-
-
-// BBox example doesn't use the Triangle Group api, but just including it for example
-void bboxTriangleGroup( const char *mtlname,
-                        size_t numTriangles, TK_IndexedTriangle *triangles,
-                        void *userData )
-{
-    printf("Triangles for material %s (%zu triangles)\n", mtlname, numTriangles );
-    
 }
 
 void *readEntireFile( const char *filename, size_t *out_filesz )
@@ -106,13 +92,13 @@ int main(int argc, const char * argv[])
 
     // Read the obj file
     if (argc < 2) {
-        bboxErrorMessage(0, "No obj file specified.", NULL );
+        bboxErrorMessage(0, "No .OBJ file specified.", NULL );
         return 1;
     }
     size_t objFileSize = 0;
     void *objFileData = readEntireFile( argv[1], &objFileSize );
     if (!objFileData) {
-        printf("Could not open OBJ file '%s'\n", argv[1] );
+        printf("Could not open .OBJ file '%s'\n", argv[1] );
     }
     
     // Prepass to determine memory reqs

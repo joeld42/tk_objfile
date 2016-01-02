@@ -9,9 +9,6 @@
 #ifndef TK_OBJFILE_H_INCLUDED
 #define TK_OBJFILE_H_INCLUDED
 
-// FIXME: (jbd) write an assert
-#include <assert.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -30,54 +27,12 @@ typedef struct {
     TK_TriangleVert vertB;
     TK_TriangleVert vertC;
 } TK_Triangle;
-
-typedef struct {
-    size_t posIndex;
-    size_t stIndex;
-    size_t normIndex;
-} TK_IndexedVert;
-    
-typedef struct {
-    TK_IndexedVert vertA;
-    TK_IndexedVert vertB;
-    TK_IndexedVert vertC;
-} TK_IndexedTriangle;
-
-// TK_Material
-typedef struct {
-    char  *mtlName; // not 0-delimited, be careful
-    size_t numTriangles;
-    TK_IndexedTriangle *triangles;
-} TK_Material;
-
-// Maximum number of unique materials in an obj file
-#define TKIMPL_MAX_UNIQUE_MTLS (100)
-    
-// Maximum length of a material name
-#define TKIMPL_MAX_MATERIAL_NAME (256)
-    
-typedef struct {
-    
-    // vertex list from obj
-    size_t numVertPos;
-    size_t numVertSt;
-    size_t numVertNrm;
-    
-    float *vertPos;
-    float *vertSt;
-    float *vertNrm;
-    
-    TK_Material *materials;
-    size_t numMaterials;
-    
-} TK_Geometry;
-    
     
 // TKObjDelegate -- Callbacks for the OBJ format parser. All callbacks are optional.
 //
 //  triangleGroup -- a bunch of triangles that share the same material
 //
-// Scratch Memory -- The parser needs some scratch memory to do it's work and to store the results.
+// Scratch Memory -- The parser needs some scratch memory to do its work and to store the results.
 // You must fill this in before you call the parser, as it doesn't do any allocations.
 // If you call the parser with scratchMemory pointer of NULL, it will only do the pre-pass to
 // determine how much memory it wants. It will fill in the scratchMemorySize, you may allocate
@@ -91,13 +46,15 @@ typedef struct
     void (*triangle)( TK_TriangleVert a, TK_TriangleVert b, TK_TriangleVert c, void *userData );
     
     // Scratch memory needed by parser.
+    // If scratchMemSize is 0, results will not be returned but it will be
+    // filled in with the required scratchMemSize
     void *scratchMem;
     size_t scratchMemSize;
     
     // arbitrary user data passed through to callbacks
     void *userData;
     
-    // bookkeeping during parsing
+    // stats used during parsing.
     size_t currentLineNumber;
     size_t numVerts;
     size_t numNorms;
@@ -125,6 +82,47 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate objDeleg
 // =========================================================
 #ifdef TK_OBJFILE_IMPLEMENTATION
 
+typedef struct {
+    size_t posIndex;
+    size_t stIndex;
+    size_t normIndex;
+} TKimpl_IndexedVert;
+
+typedef struct {
+    TKimpl_IndexedVert vertA;
+    TKimpl_IndexedVert vertB;
+    TKimpl_IndexedVert vertC;
+} TKimpl_IndexedTriangle;
+
+// TKimpl_Material
+typedef struct {
+    char  *mtlName; // not 0-delimited, be careful
+    size_t numTriangles;
+    TKimpl_IndexedTriangle *triangles;
+} TKimpl_Material;
+
+// Maximum number of unique materials in an obj file
+#define TKIMPL_MAX_UNIQUE_MTLS (100)
+
+// Maximum length of a material name
+#define TKIMPL_MAX_MATERIAL_NAME (256)
+
+typedef struct {
+    
+    // vertex list from obj
+    size_t numVertPos;
+    size_t numVertSt;
+    size_t numVertNrm;
+    
+    float *vertPos;
+    float *vertSt;
+    float *vertNrm;
+    
+    TKimpl_Material *materials;
+    size_t numMaterials;
+    
+} TKimpl_Geometry;
+
 // TKImpl_ParseType
 typedef enum {
     TKimpl_ParseTypeCountOnly,
@@ -141,7 +139,6 @@ typedef struct {
 void *TKImpl_PushSize( TKImpl_MemArena *arena, size_t structSize )
 {
     if (structSize > arena->remaining) {
-        // TODO: assert here?
         return NULL;
     }
     
@@ -374,12 +371,12 @@ bool TKImpl_parseFloat( TK_ObjDelegate *objDelegate, char *token, char *endtoken
 
 
 void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
-                         TK_Geometry *geom,
-                         TK_Material *uniqueMtls, size_t *numUniqueMtls,
+                         TKimpl_Geometry *geom,
+                         TKimpl_Material *uniqueMtls, size_t *numUniqueMtls,
                          TK_ObjDelegate *objDelegate, TKimpl_ParseType parseType )
 {
     // Make default material
-    TK_Material *currMtl = NULL;
+    TKimpl_Material *currMtl = NULL;
     if (parseType == TKimpl_ParseTypeCountOnly)
     {
         uniqueMtls[0].mtlName = (char *)"mtl.default ";
@@ -506,7 +503,7 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                     // usemtl, is this an existing mtl group or a new one?
                     TKimpl_nextToken( &token, &endtoken, endline);
                     
-                    TK_Material *useMtl = NULL;
+                    TKimpl_Material *useMtl = NULL;
                     for (int i=1; i < *numUniqueMtls; i++) {
                         if (TKimpl_compareMtlName( uniqueMtls[i].mtlName, token )) {
                             useMtl = &uniqueMtls[i];
@@ -514,7 +511,7 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                         }
                     }
                     if ((!useMtl) && (parseType==TKimpl_ParseTypeCountOnly)) {
-                        assert( *numUniqueMtls < TKIMPL_MAX_UNIQUE_MTLS );
+                        //assert( *numUniqueMtls < TKIMPL_MAX_UNIQUE_MTLS );
                         useMtl = &uniqueMtls[(*numUniqueMtls)++];
                         useMtl->numTriangles = 0;
                         useMtl->mtlName = token;
@@ -522,14 +519,10 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                     currMtl = useMtl;
 
                 } else if (TKimpl_compareToken("f", token, endtoken)) {
-                    TK_IndexedTriangle tri;
-                    TK_IndexedVert vert;
+                    TKimpl_IndexedTriangle tri;
+                    TKimpl_IndexedVert vert;
                     int count = 0;
                     do {
-//                        printf("in faceToken, currMtl is %s triangles %p\n",
-//                               TKimpl_printMtl(currMtl->mtlName),
-//                               currMtl->triangles );
-                        
                         TKimpl_nextToken( &token, &endtoken, endline );
                         if (token) {
                             if (parseType==TKimpl_ParseTypeFull)
@@ -562,7 +555,6 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                         objDelegate->numFaces += 1;
                         objDelegate->numTriangles += triCount;
                     }
-//                    printf("... face done (%d verts).\n", count);
                 }
             }
         }
@@ -575,7 +567,7 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
     }
 }
 
-void TKimpl_GetIndexedTriangle( TK_Triangle *tri, TK_Geometry *geom, TK_IndexedTriangle ndxTri )
+void TKimpl_GetIndexedTriangle( TK_Triangle *tri, TKimpl_Geometry *geom, TKimpl_IndexedTriangle ndxTri )
 {
     tri->vertA.pos[0] = geom->vertPos[ndxTri.vertA.posIndex*3 + 0];
     tri->vertA.pos[1] = geom->vertPos[ndxTri.vertA.posIndex*3 + 1];
@@ -607,7 +599,7 @@ void TKimpl_GetIndexedTriangle( TK_Triangle *tri, TK_Geometry *geom, TK_IndexedT
 
 void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDelegate )
 {
-    TK_Material uniqueMtls[TKIMPL_MAX_UNIQUE_MTLS];
+    TKimpl_Material uniqueMtls[TKIMPL_MAX_UNIQUE_MTLS];
     size_t numUniqueMtls = 0;
     
     // pre-pass, count how many verts, nrms and sts there are
@@ -627,41 +619,20 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDele
     if (!objDelegate->numSts) objDelegate->numSts = 1;
     if (!objDelegate->numNorms) objDelegate->numNorms = 1;
     
-    printf("Num Verts: %zu\n", objDelegate->numVerts );
-    printf("Num Norms: %zu\n", objDelegate->numNorms );
-    printf("Num Sts; %zu\n", objDelegate->numSts );
-    printf("Num Faces: %zu\n", objDelegate->numFaces );
-    printf("Num Triangles: %zu\n", objDelegate->numTriangles );
-    
-    printf(" Num Unique materials: %zu\n", numUniqueMtls );
     size_t totalTriangleCount = 0;
     for (int i=0; i < numUniqueMtls; i++) {
-        printf("Mtl %d '%s' (%zu triangles)\n", i, TKimpl_printMtl(uniqueMtls[i].mtlName),
-               uniqueMtls[i].numTriangles );
         totalTriangleCount += uniqueMtls[i].numTriangles;
     }
-    printf( "TotalTriangleCount: %d\n", totalTriangleCount );
-    
     
     // Calculate scratchMemSize
     size_t requiredScratchMem =
         sizeof(TKImpl_MemArena) +
-        sizeof(TK_Geometry) +
+        sizeof(TKimpl_Geometry) +
         sizeof(float)*3*objDelegate->numVerts +
         sizeof(float)*3*objDelegate->numNorms +
         sizeof(float)*2*objDelegate->numSts +
-        sizeof(TK_Material) * numUniqueMtls +
-        sizeof(TK_IndexedTriangle) * totalTriangleCount;
-    
-    printf( "Size TK_MemArena : %zu\n", sizeof(TKImpl_MemArena) );
-    printf( "Size TK_Geometry : %zu\n", sizeof(TK_Geometry) );
-    printf( "Size numVerts : %zu\n", sizeof(float)*3*objDelegate->numVerts );
-    printf( "Size numNorms : %zu\n", sizeof(float)*3*objDelegate->numNorms );
-    printf( "Size numSts : %zu\n", sizeof(float)*2*objDelegate->numSts );
-    printf( "Size TK_Material %zu : %zu\n", numUniqueMtls, sizeof(TK_Material) * numUniqueMtls );
-    printf( "Size TK_IndexedTriangle : %zu\n", sizeof(TK_IndexedTriangle) * totalTriangleCount );
-    
-    printf("Required scratch mem size %zu\n", requiredScratchMem );
+        sizeof(TKimpl_Material) * numUniqueMtls +
+        sizeof(TKimpl_IndexedTriangle) * totalTriangleCount;
     
     // If no scratchMem, just stop now after the prepass
     if (!objDelegate->scratchMem) {
@@ -680,7 +651,7 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDele
     arena->remaining = objDelegate->scratchMemSize - sizeof(TKImpl_MemArena);
     
     // Allocate our geom
-    TK_Geometry *geom = TKImpl_PushStruct(arena, TK_Geometry);
+    TKimpl_Geometry *geom = TKImpl_PushStruct(arena, TKimpl_Geometry);
     
     // Allocate vertex data lists
     geom->numVertPos = 0;
@@ -692,19 +663,14 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDele
     geom->numVertSt = 0;
     geom->vertSt = (float*)TKImpl_PushSize(arena, sizeof(float)*2*objDelegate->numSts);
     
-    geom->materials = TKImpl_PushStructArray(arena, TK_Material, numUniqueMtls );
+    geom->materials = TKImpl_PushStructArray(arena, TKimpl_Material, numUniqueMtls );
     geom->numMaterials = numUniqueMtls;
     
     for (int i = 0; i < numUniqueMtls; i++) {
         geom->materials[i].mtlName = uniqueMtls[i].mtlName;
-        geom->materials[i].triangles = TKImpl_PushStructArray( arena, TK_IndexedTriangle,
+        geom->materials[i].triangles = TKImpl_PushStructArray( arena, TKimpl_IndexedTriangle,
                                                               uniqueMtls[i].numTriangles );
         geom->materials[i].numTriangles = 0;
-        
-        printf("Alloc material %p (%s) - %zu triangles\n",
-               geom->materials[i].triangles,
-               TKimpl_printMtl( geom->materials[i].mtlName ),
-               uniqueMtls[i].numTriangles );
     }
     
     // Now space is allocated for all the data, parse again and store

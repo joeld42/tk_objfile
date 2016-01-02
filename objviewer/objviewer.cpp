@@ -685,7 +685,7 @@ GLuint textureForMaterial( ObjMeshGroup *group )
     int w=0;
     int h=0;
     int origDepth=3;
-    uint8_t *texData;
+    uint8_t *texData=NULL;
     
     // see if there is an image with the group name
     char texfile[4096];
@@ -960,8 +960,8 @@ int main(int argc, char *argv[])
             {
                 for (ObjMeshGroup *mtl = theMesh.rootGroup; mtl; mtl = mtl->next )
                 {
-                    ImGui::Text( mtl->mtlName );
-                    ImGui::Text( "Triangles: %d\n", mtl->drawbuffer.vertUsed / 3 );
+                    ImGui::Text( "%s", mtl->mtlName );
+                    ImGui::Text( "Triangles: %zu\n", mtl->drawbuffer.vertUsed / 3 );
                     ImGui::ColorEdit3("Tint Color", mtl->mtlColor);
                     ImGui::Separator();
                 }
