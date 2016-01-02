@@ -294,6 +294,7 @@
 					"${HOME}/Toolkits/imgui",
 					"${HOME}/Toolkits/imgui/examples/libs/gl3w/",
 					"${HOME}/Toolkits/imgui/examples/libs/glfw/include",
+					"${HOME}/Toolkits/stb",
 				);
 				LIBRARY_SEARCH_PATHS = /usr/local/lib;
 				OTHER_LDFLAGS = "-lglfw3";
@@ -309,6 +310,7 @@
 					"${HOME}/Toolkits/imgui",
 					"${HOME}/Toolkits/imgui/examples/libs/gl3w/",
 					"${HOME}/Toolkits/imgui/examples/libs/glfw/include",
+					"${HOME}/Toolkits/stb",
 				);
 				LIBRARY_SEARCH_PATHS = /usr/local/lib;
 				OTHER_LDFLAGS = "-lglfw3";
@@ -433,6 +435,7 @@
 				6D07F85B1C308BE5009A77ED /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		6DA9E67D1C30712A0001358A /* Build configuration list for PBXProject "tk_objfile" */ = {
 			isa = XCConfigurationList;

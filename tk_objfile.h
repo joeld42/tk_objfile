@@ -89,7 +89,6 @@ typedef struct
     // "Triangle Soup" API -- calls triangles one at a time, grouped by material
     void (*material)( const char *mtlName, size_t numTriangles, void *userData );
     void (*triangle)( TK_TriangleVert a, TK_TriangleVert b, TK_TriangleVert c, void *userData );
-    void (*finished)( void *userData );
     
     // "Indexed" API -- batches of triangles, preserving the indexing of the obj file. Still
     // probably better to run it through a tri-stripper or something.
@@ -160,8 +159,6 @@ void *TKImpl_PushSize( TKImpl_MemArena *arena, size_t structSize )
     void *result = (void*)arena->top;
     arena->top += structSize;
     arena->remaining -= structSize;
-    
-    printf("TkImpl_PushSize: remaining size %d\n", arena->remaining );
     
     return result;
 }
@@ -606,8 +603,8 @@ void TKimpl_GetIndexedTriangle( TK_Triangle *tri, TK_Geometry *geom, TK_IndexedT
     tri->vertA.nrm[0] = geom->vertNrm[ndxTri.vertA.normIndex*3 + 0];
     tri->vertA.nrm[1] = geom->vertNrm[ndxTri.vertA.normIndex*3 + 1];
     tri->vertA.nrm[2] = geom->vertNrm[ndxTri.vertA.normIndex*3 + 2];
-    tri->vertA.st[0] = geom->vertSt[ndxTri.vertA.stIndex*3 + 0];
-    tri->vertA.st[1] = geom->vertSt[ndxTri.vertA.stIndex*3 + 1];
+    tri->vertA.st[0] = geom->vertSt[ndxTri.vertA.stIndex*2 + 0];
+    tri->vertA.st[1] = geom->vertSt[ndxTri.vertA.stIndex*2 + 1];
 
     tri->vertB.pos[0] = geom->vertPos[ndxTri.vertB.posIndex*3 + 0];
     tri->vertB.pos[1] = geom->vertPos[ndxTri.vertB.posIndex*3 + 1];
@@ -615,8 +612,8 @@ void TKimpl_GetIndexedTriangle( TK_Triangle *tri, TK_Geometry *geom, TK_IndexedT
     tri->vertB.nrm[0] = geom->vertNrm[ndxTri.vertB.normIndex*3 + 0];
     tri->vertB.nrm[1] = geom->vertNrm[ndxTri.vertB.normIndex*3 + 1];
     tri->vertB.nrm[2] = geom->vertNrm[ndxTri.vertB.normIndex*3 + 2];
-    tri->vertB.st[0] = geom->vertSt[ndxTri.vertB.stIndex*3 + 0];
-    tri->vertB.st[1] = geom->vertSt[ndxTri.vertB.stIndex*3 + 1];
+    tri->vertB.st[0] = geom->vertSt[ndxTri.vertB.stIndex*2 + 0];
+    tri->vertB.st[1] = geom->vertSt[ndxTri.vertB.stIndex*2 + 1];
 
     tri->vertC.pos[0] = geom->vertPos[ndxTri.vertC.posIndex*3 + 0];
     tri->vertC.pos[1] = geom->vertPos[ndxTri.vertC.posIndex*3 + 1];
@@ -624,8 +621,8 @@ void TKimpl_GetIndexedTriangle( TK_Triangle *tri, TK_Geometry *geom, TK_IndexedT
     tri->vertC.nrm[0] = geom->vertNrm[ndxTri.vertC.normIndex*3 + 0];
     tri->vertC.nrm[1] = geom->vertNrm[ndxTri.vertC.normIndex*3 + 1];
     tri->vertC.nrm[2] = geom->vertNrm[ndxTri.vertC.normIndex*3 + 2];
-    tri->vertC.st[0] = geom->vertSt[ndxTri.vertC.stIndex*3 + 0];
-    tri->vertC.st[1] = geom->vertSt[ndxTri.vertC.stIndex*3 + 1];
+    tri->vertC.st[0] = geom->vertSt[ndxTri.vertC.stIndex*2 + 0];
+    tri->vertC.st[1] = geom->vertSt[ndxTri.vertC.stIndex*2 + 1];
 }
 
 void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDelegate )
@@ -742,12 +739,6 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDele
                 }
             }
         }
-    }
-    
-    // Now tell the delegate we're finished emitting data
-    if (objDelegate->finished)
-    {
-        objDelegate->finished( objDelegate->userData );
     }
     
 #if 0

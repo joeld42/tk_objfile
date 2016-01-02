@@ -7,8 +7,17 @@
 #include "imgui_impl_glfw_gl3.h"
 
 #include <stdio.h>
+#include <ctype.h>
+
 #include <GL/gl3w.h>
 #include <GLFW/glfw3.h>
+
+#if __APPLE__
+#include <CoreFoundation/CoreFoundation.h>
+#endif
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 #define TK_OBJFILE_IMPLEMENTATION
 #include "tk_objfile.h"
@@ -32,6 +41,7 @@ enum
 float g_materialColors[100 * 3];
 
 #define deg_to_rad(x) (x * (M_PI/180.0f))
+
 
 void glCheckError(const char* file, unsigned int line )
 {
@@ -329,11 +339,14 @@ typedef struct ObjMeshGroupStruct
 {
     char *mtlName;
     float mtlColor[3];
+    GLuint texId;
     
     ObjDrawBuffer drawbuffer;
     ObjMeshGroupStruct *next;
     
 } ObjMeshGroup;
+
+GLuint textureForMaterial( ObjMeshGroup *group );
 
 struct ObjDisplayOptions
 {
@@ -358,7 +371,7 @@ struct ObjMesh
     float objCenter[3];
     float camPos[3];
     float lightDir[3];
-    float camAngle, camTilt;
+    float camAngle, camTilt, camRadius;
     size_t totalNumTriangles;
     
     // Obj shader
@@ -382,7 +395,11 @@ size_t ObjDrawBuffer_PushVert( ObjDrawBuffer *buff, TK_TriangleVert vert )
     
     // Now we have space, add the vert
     size_t vertIndex = buff->vertUsed++;
-    memcpy( buff->buffer + vertIndex, &vert, sizeof(TK_TriangleVert));
+    TK_TriangleVert *destVert = buff->buffer + vertIndex;
+    memcpy( destVert, &vert, sizeof(TK_TriangleVert));
+    
+    // Flip ST vertically
+    destVert->st[1] = 1.0-destVert->st[1];
     
     return vertIndex;
 }
@@ -414,9 +431,11 @@ void ObjMesh_renderGroup( ObjMesh *mesh, ObjMeshGroup *group )
         glBindVertexArray(group->drawbuffer.vao);
         CHECKGL;
         
+        // Also load the texture
+        group->texId = textureForMaterial( group );
+        CHECKGL;
+        
     } else {
-//        glBindBuffer( GL_ARRAY_BUFFER, group->drawbuffer.vbo );
-//        CHECKGL;
         glBindVertexArray(group->drawbuffer.vao);
         CHECKGL;
         
@@ -425,9 +444,8 @@ void ObjMesh_renderGroup( ObjMesh *mesh, ObjMeshGroup *group )
         
     }
     
-//    // TODO: bind texture for this group
-//    glUniform3fv( mesh->uniform[Uniform_TINTCOLOR], 3, group->mtlColor );
-//    CHECKGL;
+    // bind texture for this group
+    glBindTexture( GL_TEXTURE_2D, group->texId );
     
     // Bind vertex attributes
     glEnableVertexAttribArray( mesh->attrib[VertexAttrib_POSITION] );
@@ -505,9 +523,9 @@ void ObjMesh_setupShader( ObjMesh *mesh )
     "out vec4 Out_Color;\n"
     "void main()\n"
     "{\n"
-//    "	Out_Color = Frag_Color * texture( Texture, Frag_UV.st);\n"
+    "	Out_Color = Frag_Color * texture( Texture, Frag_UV.st);\n"
 //      "  Out_Color = vec4( Frag_UV.x, 0.0, Frag_UV.y, 1.0);"
-    "  Out_Color = Frag_Color;\n"
+//    "  Out_Color = Frag_Color;\n"
     "}\n";
     
     mesh->shaderHandle = glCreateProgram();
@@ -593,12 +611,11 @@ void ObjMesh_update( ObjMesh *mesh )
     }
     
     // update camPos based on camAngle
-    float radius = 5.0; // FIXME: get from OBJ bounding radius
     float angRad = DEG2RAD( mesh->camAngle );
     vec3SetXYZ( mesh->camPos,
-               mesh->objCenter[0] + cos( angRad ) * radius,
+               mesh->objCenter[0] + cos( angRad ) * mesh->camRadius,
                mesh->objCenter[1],
-               mesh->objCenter[2] + sin(angRad) * radius );
+               mesh->objCenter[2] + sin(angRad) * mesh->camRadius );
 
     vec3SetXYZ( mesh->lightDir, cos( angRad), 0.0, sin(angRad) );
     
@@ -660,6 +677,61 @@ void ObjMesh_renderAll( ObjMesh *mesh )
         ObjMesh_renderGroup( mesh, group );
         CHECKGL;
     }
+
+}
+
+GLuint textureForMaterial( ObjMeshGroup *group )
+{
+    int w=0;
+    int h=0;
+    int origDepth=3;
+    uint8_t *texData;
+    
+    // see if there is an image with the group name
+    char texfile[4096];
+    sprintf( texfile, "%s.png", group->mtlName );
+    printf("Looking for texture %s\n", texfile );
+    FILE *fpTex = fopen( texfile, "r" );
+    if (fpTex) {
+        printf("File exists, will load...\n");
+        fclose(fpTex);
+        
+        texData = stbi_load(texfile, &w, &h, &origDepth, 3 );
+    }
+    
+    // Did not load a texture, generate a simple checkerboard
+    if ((w==0)||(h==0))
+    {
+        printf("generating texture...\n");
+        w = 32;
+        h = 32;
+        texData = (uint8_t*)malloc( w*h*3*sizeof(uint8_t) );
+        for (int j=0; j < h; j++)
+        {
+            for (int i=0; i < w; i++)
+            {
+                uint8_t p = ((i%2)==(j%2))?0xff:0x80;
+                
+                size_t ndx = ((j*w)+i) * 3;
+                texData[ndx+0] = p;
+                texData[ndx+1] = p;
+                texData[ndx+2] = p;
+            }
+        }
+    }
+
+    GLuint textureId;
+    glGenTextures( 1, &textureId );
+    glBindTexture( GL_TEXTURE_2D, textureId );
+    
+    // FIXME: make settable
+    glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+    glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+    
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB,
+                 w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, texData );
+    
+    return textureId;
 
 }
 
@@ -749,9 +821,8 @@ void objviewerTriangle( TK_TriangleVert a, TK_TriangleVert b, TK_TriangleVert c,
     }
 }
 
-void objviewerFinished( void *userData )
+void objviewerFinished( ObjMesh *mesh )
 {
-    ObjMesh *mesh = (ObjMesh*)userData;
     double centeroidDivisor = mesh->totalNumTriangles * 3;
     mesh->objCenter[0] /= centeroidDivisor;
     mesh->objCenter[1] /= centeroidDivisor;
@@ -806,7 +877,6 @@ int main(int argc, char *argv[])
     objDelegate.error = objviewerErrorMessage;
     objDelegate.material = objviewerMaterial;
     objDelegate.triangle = objviewerTriangle;
-    objDelegate.finished = objviewerFinished;
     
     initMaterialColors();
     
@@ -821,6 +891,9 @@ int main(int argc, char *argv[])
     theMesh.showInspector = true;
     theMesh.objDelegate = &objDelegate;
     
+#if __APPLE__
+    CFAbsoluteTime startTime = CFAbsoluteTimeGetCurrent();
+#endif
     // Prepass to determine memory reqs
     TK_ParseObj( objFileData, objFileSize, &objDelegate );
     printf("Scratch Mem: %zu\n", objDelegate.scratchMemSize );
@@ -828,6 +901,13 @@ int main(int argc, char *argv[])
     
     // Parse again with memory
     TK_ParseObj( objFileData, objFileSize, &objDelegate );
+    
+#if __APPLE__
+    CFAbsoluteTime endTime = CFAbsoluteTimeGetCurrent();
+    printf("Parse Time: %fms\n", (endTime - startTime) *1000);
+#endif
+
+    objviewerFinished( &theMesh );
     
     // Setup window
     glfwSetErrorCallback(error_callback);
@@ -847,36 +927,15 @@ int main(int argc, char *argv[])
     ImGui_ImplGlfwGL3_Init(window, true);
         
 //    bool show_test_window = true;
-    bool show_another_window = false;
     bool show_test_window = false;
     ImVec4 clear_color = ImColor(25, 25, 40);
+    theMesh.camRadius = 5.0;
     
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
         ImGui_ImplGlfwGL3_NewFrame();
-        
-//        // 1. Show a simple window
-//        // Tip: if we don't call ImGui::Begin()/ImGui::End() the widgets appears in a window automatically called "Debug"
-//        {
-//            static float f = 0.0f;
-//            ImGui::Text("Hello, world!");
-//            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
-//            ImGui::ColorEdit3("clear color", (float*)&clear_color);
-//            if (ImGui::Button("Test Window")) show_test_window ^= 1;
-//            if (ImGui::Button("Another Window")) show_another_window ^= 1;
-//            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-//        }
-        
-        // 2. Show another simple window, this time using an explicit Begin/End pair
-        if (show_another_window)
-        {
-            ImGui::SetNextWindowSize(ImVec2(200,100), ImGuiSetCond_FirstUseEver);
-            ImGui::Begin("Another Window", &show_another_window);
-            ImGui::Text("Hello");
-            ImGui::End();
-        }
         
         // Show OBJ file inspector
         if (theMesh.showInspector)
@@ -892,6 +951,10 @@ int main(int argc, char *argv[])
                 ImGui::BulletText( "Verts: %ld", theMesh.objDelegate->numVerts );
                 ImGui::BulletText( "Materials: %ld", theMesh.groupCount );
                 ImGui::Separator();
+            }
+            if (ImGui::CollapsingHeader("Camera"))
+            {
+                ImGui::SliderFloat("Zoom", &theMesh.camRadius, 0.1, 20.0, "%.01f");
             }
             if (ImGui::CollapsingHeader("Materials"))
             {

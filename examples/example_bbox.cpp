@@ -36,20 +36,10 @@ void bboxErrorMessage( size_t lineNum, const char *message, void *userData )
     printf("ERROR on line %zu: %s\n", lineNum, message );
 }
 
-void bboxSwitchMaterial( const char *materialName, void *userData )
+void bboxSwitchMaterial( const char *materialName, size_t numTriangles, void *userData )
 {
-    printf(">>> Current material: %s\n", materialName );
+    printf(">>> Current material: %s (%zu triangles)\n", materialName, numTriangles );
 }
-
-//void printVert( const char *msg, TK_TriangleVert v, void *userData )
-//{
-//    printf("%10s : pos (%3.2f, %3.2f, %3.2f) nrm (%3.2f, %3.2f, %3.2f) uv (%3.2f, %3.2f )\n",
-//           msg,
-//           v.pos[0], v.pos[1], v.pos[2],
-//           v.nrm[0], v.nrm[1], v.nrm[2],
-//           v.st[0], v.st[1] );
-//           
-//}
 
 void bboxProcessTriangle( TK_TriangleVert a, TK_TriangleVert b, TK_TriangleVert c, void *userData )
 {
