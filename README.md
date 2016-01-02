@@ -10,7 +10,8 @@ Features:
  - Reasonably fast -- parses Ajax_Jotero.obj, (50MB, 544k triangles) in 700ms
  - Handles multiple materials, useful for OBJs with more than one texture
 
- Limitations:
+
+Limitations:
  - Doesn't handle subobjects or groups (will parse, but groupings are lost)
  - Not very well tested
  - Crappy examples, no real build system
@@ -25,6 +26,8 @@ material(...) - Called once for each material that has one or more
 triangles using it.
 
 triangle(...) - Called once for each triangle using the material.
+
+There is also an error() callback that will report errors from parsing.
 
 Both callbacks pass in a userData from the objDelegate for convienance.
 
@@ -57,7 +60,8 @@ the obj with a single call.
 Examples:
 ---
 
-example_bbox.cpp - Prints the bounding box for an obj file. 
+example_bbox.cpp - Prints the bounding box for an obj file. This is a good
+starting point to see how to use it.
 
 objviewer - Object viewer using IMGUI/glfw. This is a pretty craptastic
 viewer, it needs a lot of work, but it's a start. Handles multiple 
@@ -79,7 +83,6 @@ TODO:
 smaller improvements:
 - handle negative indices (old style .LWO) 
 - add an optional simple one-call wrapper API that uses stdlib
-- some large test files
 - Add a flag to flip UVs automatically for opengl
 - Add a flag to preserve faceIDs, or even an alternate API that preserves faces
 - Improve error handling for insuffient scratchmem
