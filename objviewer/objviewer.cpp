@@ -919,7 +919,7 @@ int main(int argc, char *argv[])
 #if __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "OBJ Viewer", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(800, 600, "OBJ Viewer", NULL, NULL);
     glfwMakeContextCurrent(window);
     gl3wInit();
     
@@ -954,7 +954,7 @@ int main(int argc, char *argv[])
             }
             if (ImGui::CollapsingHeader("Camera"))
             {
-                ImGui::SliderFloat("Zoom", &theMesh.camRadius, 0.1, 20.0, "%.01f");
+                ImGui::SliderFloat("Zoom", &theMesh.camRadius, 0.1, 30.0, "%.01f");
             }
             if (ImGui::CollapsingHeader("Materials"))
             {

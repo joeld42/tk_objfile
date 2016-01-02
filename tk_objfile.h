@@ -141,12 +141,14 @@ typedef struct {
 void *TKImpl_PushSize( TKImpl_MemArena *arena, size_t structSize )
 {
     if (structSize > arena->remaining) {
+        // TODO: assert here?
         return NULL;
     }
     
     void *result = (void*)arena->top;
     arena->top += structSize;
     arena->remaining -= structSize;
+    
     
     return result;
 }
@@ -156,7 +158,7 @@ void *TKImpl_PushSize( TKImpl_MemArena *arena, size_t structSize )
 
 
 int TKimpl_isIdentifier( char ch ) {
-    if (ch=='\0'||ch==' '||ch=='\n'||ch=='\t') return 0;
+    if (ch=='\0'||ch==' '||ch=='\n'||ch=='\t'||ch=='\r') return 0;
     return 1;
 }
 
@@ -264,9 +266,14 @@ void TKimpl_parseFaceIndices( char *token, char *endtoken,
         *pndx = number[0];
     }
     
-    if (numSlash==1) {
-        // one slash, pos+normal
+    if (numSlash==0) {
+        // No slashes, pos only
+        if (stndx) *stndx = 0;
+        if (nndx) *nndx = 0;
+    } else if (numSlash==1) {
+        // one slash, pos/normal
         if (nndx) *nndx = number[1];
+        if (stndx) *stndx = 0;
     } else if (numSlash==2) {
         // two slash, pos/st/nrm
         if (stndx) *stndx = number[1];
@@ -519,6 +526,10 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                     TK_IndexedVert vert;
                     int count = 0;
                     do {
+//                        printf("in faceToken, currMtl is %s triangles %p\n",
+//                               TKimpl_printMtl(currMtl->mtlName),
+//                               currMtl->triangles );
+                        
                         TKimpl_nextToken( &token, &endtoken, endline );
                         if (token) {
                             if (parseType==TKimpl_ParseTypeFull)
@@ -604,18 +615,23 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDele
     objDelegate->numSts=0;
     objDelegate->numNorms=0;
     objDelegate->numFaces=0;
+    objDelegate->numTriangles=0;
     
     // First pass, just count verts and unique materials...
     TKimpl_ParseObjPass( objFileData, objFileSize,  NULL,
                         uniqueMtls, &numUniqueMtls,
                         objDelegate, TKimpl_ParseTypeCountOnly );
     
+    // Make sure we reserve space for at least a single
+    // st and normal, if they are not present in the obj
+    if (!objDelegate->numSts) objDelegate->numSts = 1;
+    if (!objDelegate->numNorms) objDelegate->numNorms = 1;
+    
     printf("Num Verts: %zu\n", objDelegate->numVerts );
     printf("Num Norms: %zu\n", objDelegate->numNorms );
     printf("Num Sts; %zu\n", objDelegate->numSts );
     printf("Num Faces: %zu\n", objDelegate->numFaces );
     printf("Num Triangles: %zu\n", objDelegate->numTriangles );
-
     
     printf(" Num Unique materials: %zu\n", numUniqueMtls );
     size_t totalTriangleCount = 0;
@@ -629,14 +645,24 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDele
     
     // Calculate scratchMemSize
     size_t requiredScratchMem =
+        sizeof(TKImpl_MemArena) +
         sizeof(TK_Geometry) +
         sizeof(float)*3*objDelegate->numVerts +
         sizeof(float)*3*objDelegate->numNorms +
-        sizeof(float)*3*objDelegate->numSts +
+        sizeof(float)*2*objDelegate->numSts +
         sizeof(TK_Material) * numUniqueMtls +
         sizeof(TK_IndexedTriangle) * totalTriangleCount;
-
-
+    
+    printf( "Size TK_MemArena : %zu\n", sizeof(TKImpl_MemArena) );
+    printf( "Size TK_Geometry : %zu\n", sizeof(TK_Geometry) );
+    printf( "Size numVerts : %zu\n", sizeof(float)*3*objDelegate->numVerts );
+    printf( "Size numNorms : %zu\n", sizeof(float)*3*objDelegate->numNorms );
+    printf( "Size numSts : %zu\n", sizeof(float)*2*objDelegate->numSts );
+    printf( "Size TK_Material %zu : %zu\n", numUniqueMtls, sizeof(TK_Material) * numUniqueMtls );
+    printf( "Size TK_IndexedTriangle : %zu\n", sizeof(TK_IndexedTriangle) * totalTriangleCount );
+    
+    printf("Required scratch mem size %zu\n", requiredScratchMem );
+    
     // If no scratchMem, just stop now after the prepass
     if (!objDelegate->scratchMem) {
         objDelegate->scratchMemSize = requiredScratchMem;
@@ -671,15 +697,33 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDele
     
     for (int i = 0; i < numUniqueMtls; i++) {
         geom->materials[i].mtlName = uniqueMtls[i].mtlName;
-        geom->materials[i].numTriangles = 0;
         geom->materials[i].triangles = TKImpl_PushStructArray( arena, TK_IndexedTriangle,
                                                               uniqueMtls[i].numTriangles );
+        geom->materials[i].numTriangles = 0;
+        
+        printf("Alloc material %p (%s) - %zu triangles\n",
+               geom->materials[i].triangles,
+               TKimpl_printMtl( geom->materials[i].mtlName ),
+               uniqueMtls[i].numTriangles );
     }
     
     // Now space is allocated for all the data, parse again and store
     TKimpl_ParseObjPass( objFileData, objFileSize,  geom,
                         geom->materials, &(geom->numMaterials),
                         objDelegate, TKimpl_ParseTypeFull );
+    
+    // If we have no STs or Norms, push a default one
+    if (geom->numVertSt==0) {
+        geom->vertSt[0] = 0.0;
+        geom->vertSt[1] = 0.0;
+    }
+    
+    if (geom->numVertNrm==0) {
+        geom->vertNrm[0] = 0.0;
+        geom->vertNrm[1] = 1.0;
+        geom->vertNrm[2] = 0.0;
+    }
+
     
     // Now go through the results with the "triangle soup" API
     if ((objDelegate->triangle) || (objDelegate->material)) {
