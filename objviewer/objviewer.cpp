@@ -29,6 +29,8 @@ enum
     VertexAttrib_COUNT
 };
 
+float g_materialColors[100 * 3];
+
 #define deg_to_rad(x) (x * (M_PI/180.0f))
 
 void glCheckError(const char* file, unsigned int line )
@@ -306,6 +308,7 @@ enum
 {
     Uniform_PROJMATRIX,
     Uniform_TINTCOLOR,
+    Uniform_LIGHTDIR,
     
     Uniform_COUNT
 };
@@ -325,6 +328,8 @@ struct ObjDrawBuffer
 typedef struct ObjMeshGroupStruct
 {
     char *mtlName;
+    float mtlColor[3];
+    
     ObjDrawBuffer drawbuffer;
     ObjMeshGroupStruct *next;
     
@@ -352,6 +357,7 @@ struct ObjMesh
     // Camera
     float objCenter[3];
     float camPos[3];
+    float lightDir[3];
     float camAngle, camTilt;
     size_t totalNumTriangles;
     
@@ -377,8 +383,6 @@ size_t ObjDrawBuffer_PushVert( ObjDrawBuffer *buff, TK_TriangleVert vert )
     // Now we have space, add the vert
     size_t vertIndex = buff->vertUsed++;
     memcpy( buff->buffer + vertIndex, &vert, sizeof(TK_TriangleVert));
-    
-    printf("PushVert: used is %d\n", vertIndex );
     
     return vertIndex;
 }
@@ -421,8 +425,9 @@ void ObjMesh_renderGroup( ObjMesh *mesh, ObjMeshGroup *group )
         
     }
     
-    // TODO: bind texture for this group
-    
+//    // TODO: bind texture for this group
+//    glUniform3fv( mesh->uniform[Uniform_TINTCOLOR], 3, group->mtlColor );
+//    CHECKGL;
     
     // Bind vertex attributes
     glEnableVertexAttribArray( mesh->attrib[VertexAttrib_POSITION] );
@@ -477,6 +482,8 @@ void ObjMesh_setupShader( ObjMesh *mesh )
     const GLchar *vertex_shader =
     "#version 330\n"
     "uniform mat4 ProjMtx;\n"
+    "uniform vec3 TintColor;\n"
+    "uniform vec3 LightDir;\n"
     "in vec3 Position;\n"
     "in vec2 TexCoord;\n"
     "in vec3 Normal;\n"
@@ -485,9 +492,9 @@ void ObjMesh_setupShader( ObjMesh *mesh )
     "void main()\n"
     "{\n"
     "	Frag_UV = TexCoord;\n"
-    "	Frag_Color = vec4(Normal, 1.0);\n"
+    "   float light = clamp( dot( Normal, LightDir ), 0.2, 1.0);"
+    "	Frag_Color =  light * vec4( TintColor, 1.0);\n"
     "	gl_Position = ProjMtx * vec4(Position,1);\n"
-//    "gl_PointSize = 3.0;"
     "}\n";
     
     const GLchar* fragment_shader =
@@ -499,8 +506,8 @@ void ObjMesh_setupShader( ObjMesh *mesh )
     "void main()\n"
     "{\n"
 //    "	Out_Color = Frag_Color * texture( Texture, Frag_UV.st);\n"
-      "  Out_Color = vec4( Frag_UV.x, 0.0, Frag_UV.y, 1.0);"
-//    "  Out_Color = Frag_Color;\n"
+//      "  Out_Color = vec4( Frag_UV.x, 0.0, Frag_UV.y, 1.0);"
+    "  Out_Color = Frag_Color;\n"
     "}\n";
     
     mesh->shaderHandle = glCreateProgram();
@@ -532,6 +539,13 @@ void ObjMesh_setupShader( ObjMesh *mesh )
     CHECKGL;
     
     mesh->uniform[Uniform_PROJMATRIX] = glGetUniformLocation( mesh->shaderHandle, "ProjMtx");
+    printf("Uniform ProjMatrix %d\n", mesh->uniform[Uniform_PROJMATRIX]);
+    
+    mesh->uniform[Uniform_TINTCOLOR] = glGetUniformLocation( mesh->shaderHandle, "TintColor");
+    printf("Uniform TintColor %d\n", mesh->uniform[Uniform_TINTCOLOR]);
+
+    mesh->uniform[Uniform_LIGHTDIR] = glGetUniformLocation( mesh->shaderHandle, "LightDir");
+    printf("Uniform LightDIr %d\n", mesh->uniform[Uniform_LIGHTDIR]);
     
     mesh->attrib[VertexAttrib_POSITION] = glGetAttribLocation( mesh->shaderHandle, "Position");
     printf("Position Attrib %d\n",mesh->attrib[VertexAttrib_POSITION] );
@@ -576,7 +590,6 @@ void ObjMesh_update( ObjMesh *mesh )
     
     if ((dragging) && (!mousePressed[0])) {
         dragging = false;
-        
     }
     
     // update camPos based on camAngle
@@ -586,7 +599,8 @@ void ObjMesh_update( ObjMesh *mesh )
                mesh->objCenter[0] + cos( angRad ) * radius,
                mesh->objCenter[1],
                mesh->objCenter[2] + sin(angRad) * radius );
-//    printf("camPos %f %f %f\n", mesh->camPos[0], mesh->camPos[1], mesh->camPos[2] );
+
+    vec3SetXYZ( mesh->lightDir, cos( angRad), 0.0, sin(angRad) );
     
     for (int i=0; i < 3; i++) {
         lastMousePressed[i] = mousePressed[i];
@@ -632,11 +646,17 @@ void ObjMesh_renderAll( ObjMesh *mesh )
     
     glUseProgram( mesh->shaderHandle );
     glUniformMatrix4fv( mesh->uniform[Uniform_PROJMATRIX], 1, GL_FALSE, modelViewProj );
+    CHECKGL;
     
+    glUniform3fv( mesh->uniform[Uniform_LIGHTDIR], 1, mesh->lightDir);
     CHECKGL;
     
     for (ObjMeshGroup *group = mesh->rootGroup;
          group; group = group->next ) {
+        
+        glUniform3fv( mesh->uniform[Uniform_TINTCOLOR], 1, group->mtlColor );
+        CHECKGL;
+        
         ObjMesh_renderGroup( mesh, group );
         CHECKGL;
     }
@@ -690,6 +710,7 @@ void objviewerErrorMessage( size_t lineNum, const char *message, void *userData 
 void objviewerMaterial( const char *materialName, size_t numTriangles, void *userData )
 {
     ObjMesh *mesh = (ObjMesh*)userData;
+    static float *currMaterialColor = g_materialColors;
 
     ObjMeshGroup *group = (ObjMeshGroup*)malloc(sizeof(ObjMeshGroup));
     memset( group, 0, sizeof(ObjMeshGroup));
@@ -699,6 +720,8 @@ void objviewerMaterial( const char *materialName, size_t numTriangles, void *use
     group->drawbuffer.buffer = (TK_TriangleVert*)malloc( sizeof(TK_TriangleVert)*numTriangles*3 );
     group->drawbuffer.vertCapacity = numTriangles*3;
     group->drawbuffer.vertUsed = 0;
+    vec3SetXYZ( group->mtlColor, *currMaterialColor, *(currMaterialColor+1), *(currMaterialColor+2) );
+    currMaterialColor += 3;
 
     ObjMesh_addGroup( mesh, group );
     
@@ -740,39 +763,26 @@ void objviewerFinished( void *userData )
            mesh->objCenter[2] );
 }
 
-#if 0
-void objviewerGeometry( TK_Geometry *geom, void *userData)
+void initMaterialColors()
 {
-    ObjMesh *mesh = (ObjMesh*)userData;
-    mesh->geom = geom;
+    // set up the first few by hand
+    vec3SetXYZ( g_materialColors+0,  0.8, 0.8, 1.0 );
+    vec3SetXYZ( g_materialColors+3,  0.8, 1.0, 0.8 );
+    vec3SetXYZ( g_materialColors+6,  1.0, 1.0, 0.5 );
+    vec3SetXYZ( g_materialColors+9,  1.0, 0.0, 0.5 );
+    vec3SetXYZ( g_materialColors+12, 1.0, 0.4, 1.0 );
+    vec3SetXYZ( g_materialColors+15, 1.0, 0.7, 0.2 );
+    vec3SetXYZ( g_materialColors+18, 0.3, 0.7, 0.7 );
+    vec3SetXYZ( g_materialColors+21, 0.2, 0.5, 0.2 );
+    vec3SetXYZ( g_materialColors+24, 0.5, 0.2, 0.2 );
+    vec3SetXYZ( g_materialColors+27, 0.4, 1.0, 0.8 );
     
-    printf("OBJVIEWER: Geometry %zu pos verts\n", geom->numVertPos );
-}
-
-void objviewerTriangleGroup( const char *mtlname, size_t numTriangles,
-                            TK_IndexedTriangle *triangles, void *userData )
-{
-    ObjMesh *mesh = (ObjMesh*)userData;
-    ObjMeshGroup *group = (ObjMeshGroup*)malloc(sizeof(ObjMeshGroup));
-    memset( group, 0, sizeof(ObjMeshGroup));
-    
-    group->mtlName = strdup( mtlname );
-    // FIXME: make dynamic
-    group->drawbuffer.numTriangleIndexes = numTriangles;
-    
-    // Go through and re-index the triangles for opengl
-    for (size_t i=0; i < numTriangles; i++)
+    // pick random colors for the rest
+    for (float *clr = g_materialColors+30; clr < g_materialColors+300; clr++ )
     {
-        ObjDrawVert vert = ObjDrawVert_FromIndexTriangleVert( draw)
-        group->drawbuffer.triangleIndexes[i*3+0] = triangles[
+        *clr = (float)rand() / (float)RAND_MAX;
     }
-    
-    
-    ObjMesh_addGroup( mesh, group );
 }
-#endif
-
-
 
 int main(int argc, char *argv[])
 {
@@ -797,6 +807,8 @@ int main(int argc, char *argv[])
     objDelegate.material = objviewerMaterial;
     objDelegate.triangle = objviewerTriangle;
     objDelegate.finished = objviewerFinished;
+    
+    initMaterialColors();
     
     // Extract filename from OBJ path
     char *objFilename = strrchr( argv[1], '/');
@@ -881,9 +893,15 @@ int main(int argc, char *argv[])
                 ImGui::BulletText( "Materials: %ld", theMesh.groupCount );
                 ImGui::Separator();
             }
-            if (ImGui::CollapsingHeader("Display"))
+            if (ImGui::CollapsingHeader("Materials"))
             {
-                ImGui::Checkbox("Wireframe", &theMesh.displayOpts.wireFrame );
+                for (ObjMeshGroup *mtl = theMesh.rootGroup; mtl; mtl = mtl->next )
+                {
+                    ImGui::Text( mtl->mtlName );
+                    ImGui::Text( "Triangles: %d\n", mtl->drawbuffer.vertUsed / 3 );
+                    ImGui::ColorEdit3("Tint Color", mtl->mtlColor);
+                    ImGui::Separator();
+                }
             }
             
             ImGui::End();

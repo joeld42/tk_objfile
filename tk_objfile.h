@@ -416,7 +416,7 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
             line++;
         }
 
-        printf("LINE: [%.*s]\n",  (int)(endline-line), line );
+//        printf("LINE: [%.*s]\n",  (int)(endline-line), line );
         
         // Skip Comments
         if (line[0]!='#')
@@ -458,7 +458,7 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                         }
                         
                         // TODO: push vert onto vert list
-                        printf("VERT: %f %f %f\n", vertPos[0], vertPos[1], vertPos[2] );
+//                        printf("VERT: %f %f %f\n", vertPos[0], vertPos[1], vertPos[2] );
                         geom->numVertPos++;
                     }
                     
@@ -489,7 +489,7 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                         }
                         
                         // TODO: push normal onto nrm list
-                        printf("NRM: %f %f %f\n", vertNrm[0], vertNrm[1], vertNrm[2] );
+//                        printf("NRM: %f %f %f\n", vertNrm[0], vertNrm[1], vertNrm[2] );
                         geom->numVertNrm++;
                     }
                 } else if (TKimpl_compareToken("vt", token, endtoken)) {
@@ -512,7 +512,7 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                         if (!TKImpl_parseFloat( objDelegate, token, endtoken, &(vertSt[1]) )) {
                             return;
                         }
-                        printf("ST: %f %f\n", vertSt[0], vertSt[1] );
+//                        printf("ST: %f %f\n", vertSt[0], vertSt[1] );
                         geom->numVertSt++;
                     }
                 } else if (TKimpl_compareToken("usemtl", token, endtoken)) {
@@ -523,21 +523,18 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                     TK_Material *useMtl = NULL;
                     for (int i=1; i < *numUniqueMtls; i++) {
                         if (TKimpl_compareMtlName( uniqueMtls[i].mtlName, token )) {
-                            printf("MATCH! (%s)\n", TKimpl_printMtl(uniqueMtls[i].mtlName) );
-
                             useMtl = &uniqueMtls[i];
                             break;
                         }
                     }
                     if ((!useMtl) && (parseType==TKimpl_ParseTypeCountOnly)) {
-                        printf("Did not find a match for mtl..\n");
                         assert( *numUniqueMtls < TKIMPL_MAX_UNIQUE_MTLS );
                         useMtl = &uniqueMtls[(*numUniqueMtls)++];
                         useMtl->numTriangles = 0;
                         useMtl->mtlName = token;
                     }
                     currMtl = useMtl;
-                    printf("Usemtl is %p\n", useMtl );
+
                 } else if (TKimpl_compareToken("f", token, endtoken)) {
 //                    printf("---- face ---\n");
                     TK_IndexedTriangle tri;
