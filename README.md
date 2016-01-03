@@ -67,7 +67,7 @@ Example:
 ----
 
 Here's a example of how it might be called:
-```
+```C
 	// Create delegate and assign callbacks
     TK_ObjDelegate objDelegate = {};
     objDelegate.error = myCallbackErrorMessage;
