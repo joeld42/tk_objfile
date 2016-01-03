@@ -32,7 +32,7 @@ to generate the implementation. For example:
 
 Basic usage is to create a TK_ObjDelegate with the callbacks:
 
-```
+```C
 void (*error)( size_t lineNumber, const char *message, void *userData );
 
 // Called once for each material that has one or moretriangles using it.
