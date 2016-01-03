@@ -1,20 +1,22 @@
 # tk_objfile
 Single file, header-only .OBJ mesh loader with zero dependancies
 
-Joel Davis (joeld42@gmail.com)
-Tapnik Software
+Joel Davis (joeld42@gmail.com) Twitter: @joeld42
+
+Tapnik Software (www.tapnik.com)
 
 Features:
  - Single header implementation, zero dependancies 
  - No allocations, uses scratch memory passed in by caller
- - Reasonably fast -- parses Ajax_Jotero.obj, (50MB, 544k triangles) in 700ms
+ - Reasonably fast -- parses ajax_jotero_com.obj, (50MB, 544k triangles) in 700ms
  - Handles multiple materials, useful for OBJs with more than one texture
+ - Will automatically triangulate convex faces (fan style).
 
 
 Limitations:
  - Doesn't handle subobjects or groups (will parse, but groupings are lost)
  - Not very well tested
- - Crappy examples, no real build system
+ - Crappy examples, no real build system 
 
 
 Usage:
@@ -76,8 +78,11 @@ Here's a example of how it might be called:
     size_t objFileSize = 0;
     void *objFileData = readEntireFile( "cube1.obj", &objFileSize );
     
-    // Prepass to determine memory reqs, and alloc scratch mem
+    // Prepass to determine memory requirements
+    objDelegate.scratchMemSize = 0;
     TK_ParseObj( objFileData, objFileSize, &objDelegate );
+
+    // Allocate scratch memory
     objDelegate.scratchMem = malloc( objDelegate.scratchMemSize );
 
     // Parse again with memory. This will call material() and
@@ -87,6 +92,7 @@ Here's a example of how it might be called:
 
 Discussion:
 ------
+
 The "triangle soup" style throws away the index vertex info. Originally I
 included an API to preserve the indexed data, but since it's indexed
 differently than OpenGL/DX you probably have to reindex it anyways, so
