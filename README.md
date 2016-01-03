@@ -19,17 +19,26 @@ Limitations:
 
 Usage:
 ----------
-This file parses an OBJ with a "triangle soup" style API. Basic usage 
-is to create a TK_ObjDelegate with two callbacks:
+This file parses an OBJ with a "triangle soup" style API. 
+
+To use, simply include "tk_objfile.h". Exactly one of the including
+C or CPP files needs to define TK_OBJFILE_IMPLEMENTATION before including
+to generate the implementation. For example:
+
+ #define TK_OBJFILE_IMPLEMENTATION
+ #include "tk_objfile.h"
+
+Basic usage is to create a TK_ObjDelegate with two callbacks:
 
 material(...) - Called once for each material that has one or more
 triangles using it.
 
 triangle(...) - Called once for each triangle using the material.
 
-There is also an error() callback that will report errors from parsing.
+There is also an error(...) callback that will report errors from parsing.
 
-Both callbacks pass in a userData from the objDelegate for convienance.
+All the callbacks are optional. All callbacks pass in a void *userData 
+from the objDelegate for convienance.
 
 MEMORY: The parser doesn't allocate any memory. Instead, you must pass in 
 a "scratchMemory" buffer in the objDelegate that is large enough to hold 
