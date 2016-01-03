@@ -5,6 +5,9 @@ Joel Davis (joeld42@gmail.com) Twitter: @joeld42
 
 Tapnik Software (www.tapnik.com)
 
+Note: for backstory about this library read this blog post:
+http://www.tapnik.com/blog/tk-objfile.html
+
 Features:
  - Single header implementation, zero dependancies 
  - No allocations, uses scratch memory passed in by caller
