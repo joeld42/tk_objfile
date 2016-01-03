@@ -25,20 +25,28 @@ To use, simply include "tk_objfile.h". Exactly one of the including
 C or CPP files needs to define TK_OBJFILE_IMPLEMENTATION before including
 to generate the implementation. For example:
 
- #define TK_OBJFILE_IMPLEMENTATION
- #include "tk_objfile.h"
+```C
+#define TK_OBJFILE_IMPLEMENTATION
+#include "tk_objfile.h"
+```
 
-Basic usage is to create a TK_ObjDelegate with two callbacks:
+Basic usage is to create a TK_ObjDelegate with the callbacks:
 
-material(...) - Called once for each material that has one or more
-triangles using it.
+```
+void (*error)( size_t lineNumber, const char *message, void *userData );
 
-triangle(...) - Called once for each triangle using the material.
+// Called once for each material that has one or moretriangles using it.
+void (*material)( const char *mtlName, size_t numTriangles, void *userData );
 
-There is also an error(...) callback that will report errors from parsing.
+// Called once for each triangle using the material.    
+void (*triangle)( TK_TriangleVert a, TK_TriangleVert b, TK_TriangleVert c, void *userData );
+
+// Will report errors from parsing.
+void (*error)( size_t lineNumber, const char *message, void *userData );
+```
 
 All the callbacks are optional. All callbacks pass in a void *userData 
-from the objDelegate for convienance.
+from the objDelegate for a convienent way to pass in some context.
 
 MEMORY: The parser doesn't allocate any memory. Instead, you must pass in 
 a "scratchMemory" buffer in the objDelegate that is large enough to hold 
@@ -54,6 +62,30 @@ Alternatively, if you know how big the objects you'll be parsing is,
 or if you happen to have a large scratch buffer on hand, then you can
 just pass that in in the first place. This saves one redundant pre-parse, 
 but it doesn't really save much time, but it might be simpler.
+
+Example:
+----
+
+Here's a example of how it might be called:
+```
+	// Create delegate and assign callbacks
+    TK_ObjDelegate objDelegate = {};
+    objDelegate.error = myCallbackErrorMessage;
+    objDelegate.material = myCallbackSwitchMaterial;
+    objDelegate.triangle = myCallbackProcessTriangle;
+
+    // Read the .OBJ file from disk
+    size_t objFileSize = 0;
+    void *objFileData = readEntireFile( "cube1.obj", &objFileSize );
+    
+    // Prepass to determine memory reqs, and alloc scratch mem
+    TK_ParseObj( objFileData, objFileSize, &objDelegate );
+    objDelegate.scratchMem = malloc( objDelegate.scratchMemSize );
+
+    // Parse again with memory. This will call material() and
+    // triangle() callbacks
+    TK_ParseObj( objFileData, objFileSize, &objDelegate );
+```
 
 Discussion:
 ------
