@@ -85,7 +85,7 @@ int main(int argc, const char * argv[])
     BoundingBox bbox = { { FLT_MAX, FLT_MAX, FLT_MAX },
                          { FLT_MIN, FLT_MIN, FLT_MIN } };
 
-    // Lower level, "callback" based API
+    // Callbacks for API
     TK_ObjDelegate objDelegate = {};
     objDelegate.userData = (void*)&bbox;
     objDelegate.error = bboxErrorMessage;

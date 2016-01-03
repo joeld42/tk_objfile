@@ -13,7 +13,7 @@
 extern "C" {
 #endif
 
-// TKTriangleVert -- Simple triangle vert struct.
+// TK_TriangleVert -- Simple triangle vert struct.
 typedef struct
 {
     float pos[3];
@@ -29,8 +29,6 @@ typedef struct {
 } TK_Triangle;
     
 // TKObjDelegate -- Callbacks for the OBJ format parser. All callbacks are optional.
-//
-//  triangleGroup -- a bunch of triangles that share the same material
 //
 // Scratch Memory -- The parser needs some scratch memory to do its work and to store the results.
 // You must fill this in before you call the parser, as it doesn't do any allocations.
@@ -67,9 +65,8 @@ typedef struct
     
 // TK_ParseObj -- Parse an obj file into triangle soup.
 //
-// This is the "lower level" API, it will parse the obj formatted data and call
-// delegate methods (such as processTriangle) for each triangle.
-// TODO:(jbd) Add a SimpleDelegate that just packs the triangles into a list for convienance
+// Parse the obj formatted data and call delegate methods for each triangle.
+// TODO:(jbd) Add a SimpleParse that just packs the triangles into a list for convienance
 void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate objDelegate );
     
     
@@ -81,6 +78,9 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate objDeleg
 //  IMPLEMENTATION
 // =========================================================
 #ifdef TK_OBJFILE_IMPLEMENTATION
+
+// Implementation types (TKimpl_*) are internal, and may 
+// change without warning between versions. 
 
 typedef struct {
     size_t posIndex;
@@ -379,7 +379,7 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
     TKimpl_Material *currMtl = NULL;
     if (parseType == TKimpl_ParseTypeCountOnly)
     {
-        uniqueMtls[0].mtlName = (char *)"mtl.default ";
+        uniqueMtls[0].mtlName = (char *)"mtl.default "; // trailing space is intentional
         uniqueMtls[0].numTriangles = 0;
         (*numUniqueMtls)++;
     }
