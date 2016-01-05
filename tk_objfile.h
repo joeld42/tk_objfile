@@ -67,7 +67,7 @@ typedef struct
 //
 // Parse the obj formatted data and call delegate methods for each triangle.
 // TODO:(jbd) Add a SimpleParse that just packs the triangles into a list for convienance
-void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate objDelegate );
+void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDelegate );
     
     
 #ifdef __cplusplus
