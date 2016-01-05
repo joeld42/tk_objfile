@@ -79,6 +79,10 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDele
 // =========================================================
 #ifdef TK_OBJFILE_IMPLEMENTATION
 
+#ifndef STRTOF
+#define STRTOF strtof
+#endif
+
 // Implementation types (TKimpl_*) are internal, and may 
 // change without warning between versions. 
 
@@ -335,7 +339,7 @@ bool TKImpl_parseFloat( TK_ObjDelegate *objDelegate, char *token, char *endtoken
         char *ch = token;
         char *endt = NULL;
         float value = 0.0;
-        value = strtof(token, &endt);
+        value = STRTOF(token, &endt);
         if (endt != endtoken) {
              if (objDelegate->error) {
                  char errBuff[23];
