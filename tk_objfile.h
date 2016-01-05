@@ -83,9 +83,9 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDele
 // change without warning between versions. 
 
 typedef struct {
-    size_t posIndex;
-    size_t stIndex;
-    size_t normIndex;
+    ssize_t posIndex;
+    ssize_t stIndex;
+    ssize_t normIndex;
 } TKimpl_IndexedVert;
 
 typedef struct {
@@ -235,7 +235,7 @@ long TKimpl_parseIndex( char *token, char *endtoken )
 }
 
 void TKimpl_parseFaceIndices( char *token, char *endtoken,
-                             size_t *pndx, size_t *stndx, size_t *nndx)
+                             ssize_t *pndx, ssize_t *stndx, ssize_t *nndx)
 {
     // count slashes and find numeric tokens
     int numSlash = 0;
@@ -531,6 +531,24 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                                                         &(vert.posIndex),
                                                         &(vert.stIndex),
                                                         &(vert.normIndex) );
+
+                                if (vert.posIndex < 0) {
+                                   (&vert.posIndex)[0] = geom->numVertPos + (&vert.posIndex)[0];
+                                   (&vert.posIndex)[1] = geom->numVertPos + (&vert.posIndex)[1];
+                                   (&vert.posIndex)[2] = geom->numVertPos + (&vert.posIndex)[2];
+                                }
+
+                                if (vert.stIndex < 0) {
+                                   (&vert.stIndex)[0] = geom->numVertSt + (&vert.stIndex)[0];
+                                   (&vert.stIndex)[1] = geom->numVertSt + (&vert.stIndex)[1];
+                                }
+
+                                if (vert.normIndex < 0) {
+                                   (&vert.normIndex)[0] = geom->numVertNrm + (&vert.normIndex)[0];
+                                   (&vert.normIndex)[1] = geom->numVertNrm + (&vert.normIndex)[1];
+                                   (&vert.normIndex)[2] = geom->numVertNrm + (&vert.normIndex)[2];
+                                }
+
                                 if (count==0) {
                                     tri.vertA = vert;
                                 } else if (count==1) {
