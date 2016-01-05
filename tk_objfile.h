@@ -333,38 +333,19 @@ bool TKImpl_parseFloat( TK_ObjDelegate *objDelegate, char *token, char *endtoken
     else
     {
         char *ch = token;
+        char *endt = NULL;
         float value = 0.0;
-        float mag= 0.1;
-        float sign = 1.0;
-        int inDecimal = 0;
-        while (ch < endtoken) {
-            if (*ch=='-') {
-                sign = -1.0;
-            } else if (*ch=='.') {
-                inDecimal = 1;
-            } else if ((*ch>='0') && (*ch<='9')) {
-                float digitValue = (float)((*ch)-'0');
-                if (inDecimal) {
-                    value = (value + digitValue*mag);
-                    mag /= 10.0;
-                } else {
-                    value = (value*10.0) + digitValue;
-                }
-            } else if (*ch=='+') {
-                // Ignorable chars
-            } else {
-                if (objDelegate->error) {
-                    char errBuff[35];
-                    TKimpl_copyString( errBuff, "Unexpected character '_' in float." );
-                    errBuff[22] = *ch;
-                    objDelegate->error( objDelegate->currentLineNumber, errBuff,
-                                       objDelegate->userData );
-                }
-                return 0;
-            }
-            ch++;
+        value = strtof(token, &endt);
+        if (endt != endtoken) {
+             if (objDelegate->error) {
+                 char errBuff[23];
+                 TKimpl_copyString( errBuff, "Could not parse float." );
+                 objDelegate->error( objDelegate->currentLineNumber, errBuff,
+                                    objDelegate->userData );
+             }
+             return 0;
         }
-        *out_result = sign * value;
+        *out_result = value;
     }
     return 1;
 }
