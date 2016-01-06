@@ -268,9 +268,9 @@ void TKimpl_parseFaceIndices( char *token, char *endtoken,
         if (stndx) *stndx = 0;
         if (nndx) *nndx = 0;
     } else if (numSlash==1) {
-        // one slash, pos/normal
-        if (nndx) *nndx = number[1];
-        if (stndx) *stndx = 0;
+        // one slash, pos/st
+        if (nndx) *nndx = 0;
+        if (stndx) *stndx = number[1];
     } else if (numSlash==2) {
         // two slash, pos/st/nrm
         if (stndx) *stndx = number[1];
@@ -410,7 +410,7 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
         {
             char *token, *endtoken;
             token = line;
-            endtoken = line-1;
+            endtoken = line;
             while (token)
             {
                 TKimpl_nextToken( &token, &endtoken, endline);
