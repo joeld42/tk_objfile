@@ -67,7 +67,7 @@ typedef struct
 //
 // Parse the obj formatted data and call delegate methods for each triangle.
 // TODO:(jbd) Add a SimpleParse that just packs the triangles into a list for convienance
-void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate objDelegate );
+void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate *objDelegate );
     
     
 #ifdef __cplusplus
@@ -79,13 +79,27 @@ void TK_ParseObj( void *objFileData, size_t objFileSize, TK_ObjDelegate objDeleg
 // =========================================================
 #ifdef TK_OBJFILE_IMPLEMENTATION
 
+// NOTE: This uses a custom version of strtof (which is probably not as good). A few
+// people have told me that this is silly, there's no reason to avoid strtof or atof
+// from the cstdlib. They're probably right, there's no real compelling reason to avoid
+// the C stdlib, but since I'm doing this mostly for my own exercise I want to keep to
+// the "zero dependancies, from scratch" philosophy.
+//
+// However, if you prefer to use the stdlib strtof, you can simply add:
+//    #define TK_STRTOF strtof
+// before you include tk_objfile and it will happily use that instead (or define
+// it to be your own implementation).
+#ifndef TK_STRTOF
+#define TK_STRTOF TKimpl_stringToFloat
+#endif
+
 // Implementation types (TKimpl_*) are internal, and may 
 // change without warning between versions. 
 
 typedef struct {
-    size_t posIndex;
-    size_t stIndex;
-    size_t normIndex;
+    ssize_t posIndex;
+    ssize_t stIndex;
+    ssize_t normIndex;
 } TKimpl_IndexedVert;
 
 typedef struct {
@@ -217,8 +231,6 @@ void TKimpl_nextToken( char **out_token, char **out_endtoken, char *endline )
     *out_endtoken = endtoken;
 }
 
-// FIXME:(jbd) Indices may be negative, old versions of Lightwave
-// would produce negative indexes to index from the end of the list.
 long TKimpl_parseIndex( char *token, char *endtoken )
 {
     long result = 0;
@@ -235,7 +247,7 @@ long TKimpl_parseIndex( char *token, char *endtoken )
 }
 
 void TKimpl_parseFaceIndices( char *token, char *endtoken,
-                             size_t *pndx, size_t *stndx, size_t *nndx)
+                             ssize_t *pndx, ssize_t *stndx, ssize_t *nndx)
 {
     // count slashes and find numeric tokens
     int numSlash = 0;
@@ -317,9 +329,43 @@ void TKimpl_memoryError( TK_ObjDelegate *objDelegate )
     }
 }
 
-// TODO:(jbd) Handle exponent notation.
+
+int TKimpl_isFloatChar( char ch )
+{
+    if ( ((ch>='0')&&(ch<='9')) || (ch=='-') || (ch=='.')) return 1;
+    else return 0;
+}
+
+float TKimpl_stringToFloat( char *str, char **str_end )
+{
+    char *ch = str;
+    float value = 0.0;
+    float mag= 0.1;
+    float sign = 1.0;
+    int inDecimal = 0;
+    while (TKimpl_isFloatChar(*ch)) {
+        
+        if (*ch=='-') {
+            sign = -1.0;
+        } else if (*ch=='.') {
+            inDecimal = 1;
+        } else if ((*ch>='0') && (*ch<='9')) {
+            float digitValue = (float)((*ch)-'0');
+            if (inDecimal) {
+                value = (value + digitValue*mag);
+                mag /= 10.0;
+            } else {
+                value = (value*10.0) + digitValue;
+            }
+        }
+        ch++;
+    }
+    if (str_end) *str_end = ch;
+    return sign * value;
+}
+
 // Return 1 on success, 0 on failure
-bool TKImpl_parseFloat( TK_ObjDelegate *objDelegate, char *token, char *endtoken, float *out_result )
+int TKimpl_parseFloat( TK_ObjDelegate *objDelegate, char *token, char *endtoken, float *out_result )
 {
     if ((!token) || (!endtoken))
     {
@@ -332,39 +378,17 @@ bool TKImpl_parseFloat( TK_ObjDelegate *objDelegate, char *token, char *endtoken
     }
     else
     {
-        char *ch = token;
+        char *endt = NULL;
         float value = 0.0;
-        float mag= 0.1;
-        float sign = 1.0;
-        int inDecimal = 0;
-        while (ch < endtoken) {
-            if (*ch=='-') {
-                sign = -1.0;
-            } else if (*ch=='.') {
-                inDecimal = 1;
-            } else if ((*ch>='0') && (*ch<='9')) {
-                float digitValue = (float)((*ch)-'0');
-                if (inDecimal) {
-                    value = (value + digitValue*mag);
-                    mag /= 10.0;
-                } else {
-                    value = (value*10.0) + digitValue;
-                }
-            } else if (*ch=='+') {
-                // Ignorable chars
-            } else {
-                if (objDelegate->error) {
-                    char errBuff[35];
-                    TKimpl_copyString( errBuff, "Unexpected character '_' in float." );
-                    errBuff[22] = *ch;
-                    objDelegate->error( objDelegate->currentLineNumber, errBuff,
-                                       objDelegate->userData );
-                }
-                return 0;
-            }
-            ch++;
+        value = TK_STRTOF(token, &endt);
+        if (endt != endtoken) {
+             if (objDelegate->error) {
+                 objDelegate->error( objDelegate->currentLineNumber, "Could not parse float.",
+                                    objDelegate->userData );
+             }
+             return 0;
         }
-        *out_result = sign * value;
+        *out_result = value;
     }
     return 1;
 }
@@ -430,17 +454,17 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                         float *vertPos = geom->vertPos + (geom->numVertPos*3);
                         
                         TKimpl_nextToken( &token, &endtoken, endline);
-                        if (!TKImpl_parseFloat( objDelegate, token, endtoken, &(vertPos[0]) )) {
+                        if (!TKimpl_parseFloat( objDelegate, token, endtoken, &(vertPos[0]) )) {
                             return;
                         }
 
                         TKimpl_nextToken( &token, &endtoken, endline);
-                        if (!TKImpl_parseFloat( objDelegate, token, endtoken, &(vertPos[1]) )) {
+                        if (!TKimpl_parseFloat( objDelegate, token, endtoken, &(vertPos[1]) )) {
                             return;
                         }
                         
                         TKimpl_nextToken( &token, &endtoken, endline);
-                        if (!TKImpl_parseFloat( objDelegate, token, endtoken, &(vertPos[2]) )) {
+                        if (!TKimpl_parseFloat( objDelegate, token, endtoken, &(vertPos[2]) )) {
                             return;
                         }
                         
@@ -459,17 +483,17 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                         float *vertNrm = geom->vertNrm + (geom->numVertNrm*3);
                         
                         TKimpl_nextToken( &token, &endtoken, endline);
-                        if (!TKImpl_parseFloat( objDelegate, token, endtoken, &(vertNrm[0]) )) {
+                        if (!TKimpl_parseFloat( objDelegate, token, endtoken, &(vertNrm[0]) )) {
                             return;
                         }
                         
                         TKimpl_nextToken( &token, &endtoken, endline);
-                        if (!TKImpl_parseFloat( objDelegate, token, endtoken, &(vertNrm[1]) )) {
+                        if (!TKimpl_parseFloat( objDelegate, token, endtoken, &(vertNrm[1]) )) {
                             return;
                         }
                         
                         TKimpl_nextToken( &token, &endtoken, endline);
-                        if (!TKImpl_parseFloat( objDelegate, token, endtoken, &(vertNrm[2]) )) {
+                        if (!TKimpl_parseFloat( objDelegate, token, endtoken, &(vertNrm[2]) )) {
                             return;
                         }
                         
@@ -487,12 +511,12 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                         float *vertSt = geom->vertSt + (geom->numVertSt*2);
 
                         TKimpl_nextToken( &token, &endtoken, endline);
-                        if (!TKImpl_parseFloat( objDelegate, token, endtoken, &(vertSt[0]) )) {
+                        if (!TKimpl_parseFloat( objDelegate, token, endtoken, &(vertSt[0]) )) {
                             return;
                         }
                         
                         TKimpl_nextToken( &token, &endtoken, endline);
-                        if (!TKImpl_parseFloat( objDelegate, token, endtoken, &(vertSt[1]) )) {
+                        if (!TKimpl_parseFloat( objDelegate, token, endtoken, &(vertSt[1]) )) {
                             return;
                         }
 
@@ -531,6 +555,24 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                                                         &(vert.posIndex),
                                                         &(vert.stIndex),
                                                         &(vert.normIndex) );
+
+                                if (vert.posIndex < 0) {
+                                   (&vert.posIndex)[0] = geom->numVertPos + (&vert.posIndex)[0];
+                                   (&vert.posIndex)[1] = geom->numVertPos + (&vert.posIndex)[1];
+                                   (&vert.posIndex)[2] = geom->numVertPos + (&vert.posIndex)[2];
+                                }
+
+                                if (vert.stIndex < 0) {
+                                   (&vert.stIndex)[0] = geom->numVertSt + (&vert.stIndex)[0];
+                                   (&vert.stIndex)[1] = geom->numVertSt + (&vert.stIndex)[1];
+                                }
+
+                                if (vert.normIndex < 0) {
+                                   (&vert.normIndex)[0] = geom->numVertNrm + (&vert.normIndex)[0];
+                                   (&vert.normIndex)[1] = geom->numVertNrm + (&vert.normIndex)[1];
+                                   (&vert.normIndex)[2] = geom->numVertNrm + (&vert.normIndex)[2];
+                                }
+
                                 if (count==0) {
                                     tri.vertA = vert;
                                 } else if (count==1) {
