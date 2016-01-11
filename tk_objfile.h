@@ -557,20 +557,15 @@ void TKimpl_ParseObjPass( void *objFileData, size_t objFileSize,
                                                         &(vert.normIndex) );
 
                                 if (vert.posIndex < 0) {
-                                   (&vert.posIndex)[0] = geom->numVertPos + (&vert.posIndex)[0];
-                                   (&vert.posIndex)[1] = geom->numVertPos + (&vert.posIndex)[1];
-                                   (&vert.posIndex)[2] = geom->numVertPos + (&vert.posIndex)[2];
+                                   vert.posIndex = geom->numVertPos + vert.posIndex;
                                 }
 
                                 if (vert.stIndex < 0) {
-                                   (&vert.stIndex)[0] = geom->numVertSt + (&vert.stIndex)[0];
-                                   (&vert.stIndex)[1] = geom->numVertSt + (&vert.stIndex)[1];
+                                   vert.stIndex = geom->numVertSt + vert.stIndex;
                                 }
 
                                 if (vert.normIndex < 0) {
-                                   (&vert.normIndex)[0] = geom->numVertNrm + (&vert.normIndex)[0];
-                                   (&vert.normIndex)[1] = geom->numVertNrm + (&vert.normIndex)[1];
-                                   (&vert.normIndex)[2] = geom->numVertNrm + (&vert.normIndex)[2];
+                                   vert.normIndex = geom->numVertNrm + vert.normIndex;
                                 }
 
                                 if (count==0) {
